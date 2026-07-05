@@ -11,7 +11,7 @@ const useGallery = () => {
   const [images, setImages]       = useState([]);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
-  const [deleting, setDeleting]   = useState(null); // key of image being deleted
+  const [deleting, setDeleting]   = useState(null); // publicId of image being deleted
 
   // ── Load Images ──────────────────────────────────────────────────────────
   const loadImages = useCallback(async () => {
@@ -33,13 +33,13 @@ const useGallery = () => {
   }, [loadImages]);
 
   // ── Delete Image ─────────────────────────────────────────────────────────
-  const deleteImage = useCallback(async (key) => {
-    setDeleting(key);
+  const deleteImage = useCallback(async (publicId) => {
+    setDeleting(publicId);
     setError(null);
     try {
-      await apiDeleteImage(key);
+      await apiDeleteImage(publicId);
       // Remove the deleted image from local state without re-fetching
-      setImages((prev) => prev.filter((img) => img.key !== key));
+      setImages((prev) => prev.filter((img) => img.publicId !== publicId));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to delete image.');
     } finally {

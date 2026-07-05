@@ -22,7 +22,7 @@ const Lightbox = ({ images, selectedIndex, onClose, onNavigate }) => {
   if (selectedIndex === null || !images[selectedIndex]) return null;
 
   const currentImage = images[selectedIndex];
-  const filename = currentImage.key?.split('/').pop() || 'image';
+  const filename = currentImage.publicId?.split('/').pop() || 'image';
 
   return (
     <div 
@@ -34,7 +34,7 @@ const Lightbox = ({ images, selectedIndex, onClose, onNavigate }) => {
         <div className="text-white text-sm opacity-80 max-w-[70%] pointer-events-auto">
           <p className="font-medium truncate">{filename}</p>
           <p className="text-xs text-slate-400 mt-0.5">
-            {new Date(currentImage.lastModified).toLocaleDateString('en-IN', {
+            {new Date(currentImage.createdAt).toLocaleDateString('en-IN', {
               day: '2-digit', month: 'short', year: 'numeric',
             })}
           </p>

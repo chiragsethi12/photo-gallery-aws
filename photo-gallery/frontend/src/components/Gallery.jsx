@@ -9,8 +9,8 @@ import Lightbox from './Lightbox';
  *   images   - Array of image objects from S3
  *   loading  - Boolean: true while fetching
  *   error    - String or null: fetch error message
- *   deleting - String or null: key of image being deleted
- *   onDelete - (key) => void
+ *   deleting - String or null: publicId of image being deleted
+ *   onDelete - (publicId) => void
  *   onRetry  - () => void: re-fetch callback
  */
 const Gallery = ({ images, loading, error, deleting, onDelete, onRetry }) => {
@@ -94,10 +94,10 @@ const Gallery = ({ images, loading, error, deleting, onDelete, onRetry }) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {images.map((image, index) => (
           <ImageCard
-            key={image.key}
+            key={image.publicId}
             image={image}
             onDelete={onDelete}
-            deleting={deleting === image.key}
+            deleting={deleting === image.publicId}
             onClick={() => setSelectedIndex(index)}
           />
         ))}

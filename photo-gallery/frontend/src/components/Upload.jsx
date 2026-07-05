@@ -66,10 +66,12 @@ const Upload = ({ onUploadSuccess }) => {
 
       // Notify parent (App) to prepend this image to the gallery
       onUploadSuccess({
-        key:          result.key,
+        publicId:     result.publicId,
         url:          result.url,
-        lastModified: new Date().toISOString(),
-        size:         selectedFile.size,
+        createdAt:    result.createdAt || new Date().toISOString(),
+        width:        result.width,
+        height:       result.height,
+        format:       result.format,
       });
 
       // Reset the form after a short delay so the user sees the success state
@@ -186,7 +188,7 @@ const Upload = ({ onUploadSuccess }) => {
       {uploading && (
         <div className="mt-4">
           <div className="flex justify-between text-xs text-slate-400 mb-1.5">
-            <span>Uploading to S3…</span>
+            <span>Uploading to Cloudinary…</span>
             <span>{progress}%</span>
           </div>
           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -256,7 +258,7 @@ const Upload = ({ onUploadSuccess }) => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
                   </svg>
-                  Upload to S3
+                  Upload to Cloudinary
                 </>
               )}
             </button>

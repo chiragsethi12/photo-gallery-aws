@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 /**
  * ImageCard
  * Props:
- *   image    - { key, url, lastModified, size }
- *   onDelete - callback(key)
+ *   image    - { publicId, url, createdAt, width, height, format }
+ *   onDelete - callback(publicId)
  *   deleting - boolean (true while DELETE request is in flight for this card)
  */
 const ImageCard = ({ image, onDelete, deleting, onClick }) => {
@@ -28,13 +28,13 @@ const ImageCard = ({ image, onDelete, deleting, onClick }) => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const filename = image.key?.split('/').pop() || 'image';
+  const filename = image.publicId?.split('/').pop() || 'image';
 
   // ── Delete flow ───────────────────────────────────────────────────────────
   const handleDeleteClick = (e) => {
     e.stopPropagation();
     if (!confirming) { setConfirming(true); return; }
-    onDelete(image.key);
+    onDelete(image.publicId);
     setConfirming(false);
   };
 
@@ -87,7 +87,7 @@ const ImageCard = ({ image, onDelete, deleting, onClick }) => {
               disabled={deleting}
               title="Delete image"
               className="flex items-center justify-center w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm hover:bg-red-600/90 text-white transition-all duration-200 disabled:opacity-50"
-              id={`delete-btn-${image.key}`}
+              id={`delete-btn-${image.publicId}`}
             >
               {deleting ? (
                 <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
@@ -118,8 +118,12 @@ const ImageCard = ({ image, onDelete, deleting, onClick }) => {
         <div>
           <p className="text-xs font-medium text-white truncate" title={filename}>{filename}</p>
           <div className="flex items-center justify-between mt-0.5">
-            <span className="text-[10px] text-slate-400">{formatDate(image.lastModified)}</span>
-            {image.size && <span className="text-[10px] text-slate-400">{formatSize(image.size)}</span>}
+            <span className="text-[10px] text-slate-400">{formatDate(image.createdAt)}</span>
+            {image.width && image.height && (
+              <span className="text-[10px] text-slate-400">
+                {image.width}x{image.height} ({image.format})
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -1,54 +1,50 @@
-// controllers/imageController.js - Business logic for S3 image operations
-const {
-  PutObjectCommand,
-  ListObjectsV2Command,
-  DeleteObjectCommand,
-} = require('@aws-sdk/client-s3');
-const { v4: uuidv4 } = require('uuid');
-const s3Client = require('../config/s3Config');
-
-const BUCKET_NAME = process.env.S3_BUCKET_NAME;
-const REGION = process.env.AWS_REGION || 'ap-south-1';
+// controllers/imageController.js - Business logic for Cloudinary image operations
+const cloudinary = require('../config/cloudinaryConfig');
+const streamifier = require('streamifier');
 
 // ─── Upload Image ─────────────────────────────────────────────────────────────
 
 /**
  * POST /api/upload
  * Accepts a multipart/form-data request containing an image file.
- * Uploads the image to S3 and returns its public URL.
+ * Uploads the image to Cloudinary folder "photo-gallery" and returns metadata.
  */
 const uploadImage = async (req, res) => {
   try {
-    // multer puts the file info in req.file
     if (!req.file) {
       return res.status(400).json({ error: 'No file provided. Please select an image.' });
     }
 
-    // Generate a unique key so filenames never collide in S3
-    const fileExtension = req.file.originalname.split('.').pop();
-    const uniqueKey = `photos/${uuidv4()}.${fileExtension}`;
-
-    // Build the S3 upload command
-    const uploadParams = {
-      Bucket: BUCKET_NAME,
-      Key: uniqueKey,
-      Body: req.file.buffer,       // file data from memory storage
-      ContentType: req.file.mimetype,
+    // Wrap the Cloudinary upload stream in a Promise
+    const uploadToCloudinary = (fileBuffer) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'photo-gallery',
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
+        streamifier.createReadStream(fileBuffer).pipe(stream);
+      });
     };
 
-    // Execute the upload
-    await s3Client.send(new PutObjectCommand(uploadParams));
+    const result = await uploadToCloudinary(req.file.buffer);
 
-    // Construct the public URL of the uploaded image
-    // Note: The S3 bucket must have public-read ACLs or a bucket policy for this to work.
-    const imageUrl = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${uniqueKey}`;
-
-    console.log(`✅ Uploaded: ${uniqueKey}`);
+    console.log(`✅ Uploaded: ${result.public_id}`);
 
     res.status(200).json({
       message: 'Image uploaded successfully!',
-      key: uniqueKey,
-      url: imageUrl,
+      secure_url: result.secure_url,
+      public_id: result.public_id,
+      width: result.width,
+      height: result.height,
+      format: result.format,
+      // Provide camelCase mappings to make it easy for frontend
+      publicId: result.public_id,
+      url: result.secure_url,
     });
   } catch (error) {
     console.error('Upload error:', error.message);
@@ -60,28 +56,28 @@ const uploadImage = async (req, res) => {
 
 /**
  * GET /api/images
- * Lists all objects stored under the "photos/" prefix in S3.
- * Returns an array of { key, url, lastModified } objects.
+ * Lists all resources stored under the "photo-gallery" prefix in Cloudinary.
+ * Returns an array of { publicId, url, width, height, format, createdAt } objects.
  */
 const getImages = async (req, res) => {
   try {
-    const listParams = {
-      Bucket: BUCKET_NAME,
-      Prefix: 'photos/', // only fetch images we uploaded
-    };
+    const response = await cloudinary.api.resources({
+      type: 'upload',
+      prefix: 'photo-gallery/',
+      max_results: 100,
+    });
 
-    const data = await s3Client.send(new ListObjectsV2Command(listParams));
-
-    // Map S3 objects to a simpler shape for the frontend
-    const images = (data.Contents || []).map((item) => ({
-      key: item.Key,
-      url: `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${item.Key}`,
-      lastModified: item.LastModified,
-      size: item.Size,
+    const images = (response.resources || []).map((resource) => ({
+      publicId: resource.public_id,
+      url: resource.secure_url,
+      width: resource.width,
+      height: resource.height,
+      format: resource.format,
+      createdAt: resource.created_at,
     }));
 
     // Sort newest first
-    images.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
+    images.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.status(200).json({ images });
   } catch (error) {
@@ -93,28 +89,21 @@ const getImages = async (req, res) => {
 // ─── Delete Image ─────────────────────────────────────────────────────────────
 
 /**
- * DELETE /api/image/:key
- * Deletes a specific object from S3 by its key.
- * The key is URL-encoded in the route param, so we decode it first.
+ * DELETE /api/image/:publicId(*)
+ * Deletes a specific resource from Cloudinary by its publicId.
  */
 const deleteImage = async (req, res) => {
   try {
-    // The key may contain slashes (e.g. "photos/uuid.jpg"), so we use a wildcard param
-    const key = decodeURIComponent(req.params.key);
+    const publicId = decodeURIComponent(req.params.publicId);
 
-    if (!key) {
-      return res.status(400).json({ error: 'Image key is required.' });
+    if (!publicId) {
+      return res.status(400).json({ error: 'Image publicId is required.' });
     }
 
-    const deleteParams = {
-      Bucket: BUCKET_NAME,
-      Key: key,
-    };
+    const result = await cloudinary.uploader.destroy(publicId);
 
-    await s3Client.send(new DeleteObjectCommand(deleteParams));
-
-    console.log(`🗑️  Deleted: ${key}`);
-    res.status(200).json({ message: 'Image deleted successfully!', key });
+    console.log(`🗑️  Deleted: ${publicId}, result: ${result.result}`);
+    res.status(200).json({ message: 'Image deleted successfully!', publicId });
   } catch (error) {
     console.error('Delete error:', error.message);
     res.status(500).json({ error: 'Failed to delete image. ' + error.message });

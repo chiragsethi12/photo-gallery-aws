@@ -26,9 +26,9 @@ router.post('/upload', upload.single('image'), (req, res, next) => {
 router.get('/images', getImages);
 
 /**
- * DELETE /api/image/:key
- * :key is the full S3 object key (URL-encoded), e.g. "photos%2Fuuid.jpg"
+ * DELETE /api/image/:publicId
+ * :publicId is the full Cloudinary public_id (URL-encoded), e.g. "photo-gallery%2Fuuid"
  */
-router.delete('/image/:key(*)', deleteImage);
+router.delete('/image/:publicId(*)', deleteImage);
 
 module.exports = router;

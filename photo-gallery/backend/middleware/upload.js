@@ -3,7 +3,7 @@ const multer = require('multer');
 
 /**
  * Use memory storage so the file buffer is available in req.file.buffer.
- * This avoids writing temp files to disk before uploading to S3.
+ * This avoids writing temp files to disk before uploading to Cloudinary.
  */
 const storage = multer.memoryStorage();
 

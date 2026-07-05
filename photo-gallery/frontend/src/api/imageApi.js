@@ -39,14 +39,14 @@ export const fetchImages = async () => {
 };
 
 /**
- * Delete an image from S3 by its key.
- * The key is URL-encoded to safely handle slashes in it.
+ * Delete an image from Cloudinary by its publicId.
+ * The publicId is URL-encoded to safely handle slashes in it.
  *
- * @param {string} key - S3 object key (e.g. "photos/uuid.jpg")
- * @returns {Promise<{message, key}>}
+ * @param {string} publicId - Cloudinary public ID (e.g. "photo-gallery/uuid")
+ * @returns {Promise<{message, publicId}>}
  */
-export const deleteImage = async (key) => {
-  const encodedKey = encodeURIComponent(key);
-  const response = await axios.delete(`${API_BASE}/image/${encodedKey}`);
+export const deleteImage = async (publicId) => {
+  const encodedPublicId = encodeURIComponent(publicId);
+  const response = await axios.delete(`${API_BASE}/image/${encodedPublicId}`);
   return response.data;
 };
