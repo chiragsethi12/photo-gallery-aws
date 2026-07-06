@@ -1,4 +1,4 @@
-// src/components/Gallery.jsx - Responsive image grid with loading and empty states
+// src/components/Gallery.jsx - Responsive image grid with active filters, loading, and pagination controls
 import React, { useState } from 'react';
 import ImageCard from './ImageCard';
 import Lightbox from './Lightbox';
@@ -6,12 +6,24 @@ import Lightbox from './Lightbox';
 /**
  * Gallery
  * Props:
- *   images   - Array of image objects from S3
- *   loading  - Boolean: true while fetching
- *   error    - String or null: fetch error message
- *   deleting - String or null: publicId of image being deleted
- *   onDelete - (publicId) => void
- *   onRetry  - () => void: re-fetch callback
+ *   images          - Array of image objects
+ *   totalPages      - Total pages count
+ *   currentPage     - Current page
+ *   onPageChange    - (page) => void
+ *   totalImages     - Total number of images
+ *   loading         - Fetching loading state
+ *   error           - Fetch error string
+ *   deleting        - publicId of image currently deleting
+ *   onDelete        - (publicId) => void
+ *   onRetry         - () => void
+ *   currentUser     - Active user object
+ *   toggleFavorite  - (imageId, user) => void
+ *   selectedAlbum   - Active album ID filter
+ *   selectedTag     - Active tag filter
+ *   onClearAlbumFilter - () => void
+ *   onClearTagFilter   - () => void
+ *   onTagClick      - (tag) => void
+ *   albums          - Array of all albums
  */
 const Gallery = ({
   images,
@@ -24,7 +36,14 @@ const Gallery = ({
   deleting,
   onDelete,
   onRetry,
-  currentUser
+  currentUser,
+  toggleFavorite,
+  selectedAlbum = '',
+  selectedTag = '',
+  onClearAlbumFilter,
+  onClearTagFilter,
+  onTagClick,
+  albums = [],
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
 
@@ -37,10 +56,14 @@ const Gallery = ({
     }
   };
 
+  // Find active album name
+  const activeAlbumObj = albums.find((a) => a._id === selectedAlbum);
+  const activeAlbumName = activeAlbumObj ? activeAlbumObj.name : 'Selected Album';
+
   // ── Loading skeleton grid ────────────────────────────────────────────────
   if (loading) {
     return (
-      <section>
+      <section className="space-y-4">
         <SectionHeader count={null} />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -54,7 +77,7 @@ const Gallery = ({
   // ── Error state ──────────────────────────────────────────────────────────
   if (error) {
     return (
-      <section>
+      <section className="space-y-4">
         <SectionHeader count={0} />
         <div className="glass rounded-2xl p-10 flex flex-col items-center gap-4 text-center">
           <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
@@ -80,8 +103,35 @@ const Gallery = ({
   // ── Empty state ──────────────────────────────────────────────────────────
   if (!images || images.length === 0) {
     return (
-      <section>
+      <section className="space-y-4">
         <SectionHeader count={0} />
+
+        {/* Removable badges for filters in empty state */}
+        {(selectedAlbum || selectedTag) && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {selectedAlbum && (
+              <span className="flex items-center gap-1.5 text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl font-medium">
+                Album: {activeAlbumName}
+                <button onClick={onClearAlbumFilter} className="hover:text-white transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              </span>
+            )}
+            {selectedTag && (
+              <span className="flex items-center gap-1.5 text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-xl font-medium">
+                Tag: {selectedTag}
+                <button onClick={onClearTagFilter} className="hover:text-white transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="glass rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
           <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center">
             <svg className="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24">
@@ -92,7 +142,11 @@ const Gallery = ({
           </div>
           <div>
             <p className="text-lg font-semibold text-white mb-1">No photos yet</p>
-            <p className="text-sm text-slate-400">Upload your first image using the panel on the left.</p>
+            <p className="text-sm text-slate-400">
+              {selectedAlbum || selectedTag 
+                ? 'Try clearing active filters to see other photos.'
+                : 'Upload your first image using the panel on the left.'}
+            </p>
           </div>
         </div>
       </section>
@@ -101,8 +155,43 @@ const Gallery = ({
 
   // ── Image grid ───────────────────────────────────────────────────────────
   return (
-    <section>
+    <section className="space-y-4">
       <SectionHeader count={totalImages} />
+
+      {/* ── Active Filter Badges ────────────────────────────────────────── */}
+      {(selectedAlbum || selectedTag) && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {selectedAlbum && (
+            <span className="flex items-center gap-1.5 text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl font-medium">
+              Album: {activeAlbumName}
+              <button
+                onClick={onClearAlbumFilter}
+                className="hover:text-white transition-colors"
+                title="Clear Album Filter"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </span>
+          )}
+          {selectedTag && (
+            <span className="flex items-center gap-1.5 text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-xl font-medium">
+              Tag: {selectedTag}
+              <button
+                onClick={onClearTagFilter}
+                className="hover:text-white transition-colors"
+                title="Clear Tag Filter"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {images.map((image, index) => (
           <ImageCard
@@ -112,6 +201,8 @@ const Gallery = ({
             deleting={deleting === image.publicId}
             onClick={() => setSelectedIndex(index)}
             currentUser={currentUser}
+            toggleFavorite={toggleFavorite}
+            onTagClick={onTagClick}
           />
         ))}
       </div>
@@ -154,7 +245,7 @@ const Gallery = ({
 
 // ── Sub-component: section header label ─────────────────────────────────────
 const SectionHeader = ({ count }) => (
-  <div className="flex items-center justify-between mb-4">
+  <div className="flex items-center justify-between mb-2">
     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
       <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>

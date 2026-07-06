@@ -8,6 +8,7 @@ const {
   uploadImage,
   getImages,
   deleteImage,
+  toggleFavoriteImage,
 } = require('../controllers/imageController');
 
 /**
@@ -30,5 +31,11 @@ router.get('/images', getImages);
  * Only accessible to the authenticated owner.
  */
 router.delete('/image/:publicId(*)', protect, deleteImage);
+
+/**
+ * POST /api/image/:id/favorite
+ * Toggles favorite state on a photo for the current user.
+ */
+router.post('/image/:id/favorite', protect, toggleFavoriteImage);
 
 module.exports = router;

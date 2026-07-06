@@ -113,9 +113,12 @@ const getImages = async (req, res) => {
       }
     }
 
-    // Search by title (case-insensitive match)
+    // Search by title or tag (case-insensitive match)
     if (req.query.search) {
-      filter.title = { $regex: req.query.search, $options: 'i' };
+      filter.$or = [
+        { title: { $regex: req.query.search, $options: 'i' } },
+        { tags: { $in: [new RegExp(req.query.search, 'i')] } }
+      ];
     }
 
     const totalImages = await Image.countDocuments(filter);
@@ -188,4 +191,45 @@ const deleteImage = async (req, res) => {
   }
 };
 
-module.exports = { uploadImage, getImages, deleteImage };
+// ─── Toggle Favorite Image ───────────────────────────────────────────────────
+
+/**
+ * POST /api/image/:id/favorite
+ * Toggles user ID in the image favoritedBy array.
+ */
+const toggleFavoriteImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid image ID.' });
+    }
+
+    const image = await Image.findById(id);
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found.' });
+    }
+
+    const index = image.favoritedBy.indexOf(userId);
+    if (index === -1) {
+      image.favoritedBy.push(userId);
+    } else {
+      image.favoritedBy.splice(index, 1);
+    }
+
+    await image.save();
+    console.log(`❤️ Toggled favorite for user ${userId} on image ${id}`);
+
+    res.status(200).json({
+      message: 'Favorite toggled successfully',
+      favoritedBy: image.favoritedBy,
+      isFavorited: index === -1,
+    });
+  } catch (error) {
+    console.error('Toggle favorite error:', error.message);
+    res.status(500).json({ error: 'Failed to toggle favorite. ' + error.message });
+  }
+};
+
+module.exports = { uploadImage, getImages, deleteImage, toggleFavoriteImage };

@@ -1,8 +1,9 @@
-// src/App.jsx - Root application component with user authentication context
-import React, { useContext, useState } from 'react';
+// src/App.jsx - Root application component with context switching and global state wiring
+import React, { useContext, useState, useEffect } from 'react';
 import Navbar  from './components/Navbar';
 import Upload  from './components/Upload';
 import Gallery from './components/Gallery';
+import AlbumsView from './components/AlbumsView';
 import useGallery from './hooks/useGallery';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import LoginForm from './components/LoginForm';
@@ -11,8 +12,9 @@ import RegisterForm from './components/RegisterForm';
 function MainApp() {
   const { user, logout } = useContext(AuthContext);
   const [isLoginView, setIsLoginView] = useState(true);
+  const [viewMode, setViewMode] = useState('photos'); // 'photos' or 'albums'
 
-  // All gallery state is managed in one custom hook
+  // Extract all states and actions from the centralized hook
   const { 
     images, 
     loading, 
@@ -21,10 +23,33 @@ function MainApp() {
     totalPages, 
     currentPage, 
     totalImages, 
+    selectedAlbum,
+    selectedTag,
+    searchQuery,
+    albums,
+    albumsLoading,
     loadImages, 
+    loadAlbums,
+    filterByAlbum,
+    filterByTag,
+    handleSearch,
     deleteImage, 
+    toggleFavorite,
     addImage 
   } = useGallery();
+
+  // Load albums list as soon as user logs in
+  useEffect(() => {
+    if (user) {
+      loadAlbums();
+    }
+  }, [user, loadAlbums]);
+
+  // Handle selecting an album card from AlbumsView
+  const handleSelectAlbum = (albumId) => {
+    filterByAlbum(albumId);
+    setViewMode('photos');
+  };
 
   // Show authentication screen if not logged in
   if (!user) {
@@ -47,7 +72,22 @@ function MainApp() {
     <div className="min-h-screen bg-[#070d1a]">
 
       {/* ── Top navigation ──────────────────────────────────────────────── */}
-      <Navbar onRefresh={() => loadImages(1)} imageCount={totalImages} user={user} onLogout={logout} />
+      <Navbar 
+        onRefresh={() => {
+          if (viewMode === 'photos') {
+            loadImages(1);
+          } else {
+            loadAlbums();
+          }
+        }} 
+        imageCount={totalImages} 
+        user={user} 
+        onLogout={logout} 
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        searchQuery={searchQuery}
+        onSearchChange={handleSearch}
+      />
 
       {/* ── Page hero banner ────────────────────────────────────────────── */}
       <div className="relative overflow-hidden bg-gradient-to-b from-indigo-950/40 to-transparent border-b border-white/5 py-10 px-4">
@@ -60,13 +100,13 @@ function MainApp() {
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path d="M5.5 16.5l-3-3 3-3M14.5 7.5l3 3-3 3M9 4l2 12"/>
             </svg>
-            Secure MongoDB Persisted Metadata
+            Interactive Cloud Gallery & Album Board
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold gradient-text mb-3 leading-tight">
             Cloud Photo Gallery
           </h1>
           <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto">
-            Upload, store, and manage your photos in the cloud — infinitely scalable, always available.
+            Upload, categorize with tags, group into custom albums, and favorite your photos on a high-availability cloud database.
           </p>
         </div>
       </div>
@@ -78,33 +118,49 @@ function MainApp() {
           {/* ── Left column: upload panel ─────────────────────────────── */}
           <aside className="w-full lg:w-80 xl:w-96 flex-shrink-0">
             <div className="sticky top-24">
-              <Upload onUploadSuccess={addImage} />
+              <Upload onUploadSuccess={addImage} albums={albums} />
 
-              {/* S3 badge */}
+              {/* Info badge */}
               <div className="mt-4 glass rounded-xl p-4 text-xs text-slate-500 flex items-start gap-3">
                 <svg className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 </svg>
-                <p>Files are encrypted-at-rest in your Cloudinary storage. MongoDB persists records and coordinates ownership authorization.</p>
+                <p>Attach photos to albums and add search tags. You can favorite photos to highlight them or download the full resolution with one click.</p>
               </div>
             </div>
           </aside>
 
-          {/* ── Right column: gallery grid ─────────────────────────────── */}
+          {/* ── Right column: toggleable view grid ──────────────────────── */}
           <div className="flex-1 min-w-0">
-            <Gallery
-              images={images}
-              totalPages={totalPages}
-              currentPage={currentPage}
-              totalImages={totalImages}
-              loading={loading}
-              error={error}
-              deleting={deleting}
-              onDelete={deleteImage}
-              onRetry={() => loadImages(currentPage)}
-              onPageChange={loadImages}
-              currentUser={user}
-            />
+            {viewMode === 'albums' ? (
+              <AlbumsView
+                albums={albums}
+                loading={albumsLoading}
+                onSelectAlbum={handleSelectAlbum}
+                onRefreshAlbums={loadAlbums}
+              />
+            ) : (
+              <Gallery
+                images={images}
+                totalPages={totalPages}
+                currentPage={currentPage}
+                totalImages={totalImages}
+                loading={loading}
+                error={error}
+                deleting={deleting}
+                onDelete={deleteImage}
+                onRetry={() => loadImages(currentPage)}
+                onPageChange={loadImages}
+                currentUser={user}
+                toggleFavorite={toggleFavorite}
+                selectedAlbum={selectedAlbum}
+                selectedTag={selectedTag}
+                onClearAlbumFilter={() => filterByAlbum('')}
+                onClearTagFilter={() => filterByTag('')}
+                onTagClick={filterByTag}
+                albums={albums}
+              />
+            )}
           </div>
 
         </div>
@@ -112,7 +168,7 @@ function MainApp() {
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer className="border-t border-white/5 mt-10 py-6 text-center text-xs text-slate-600">
-        CloudSnap · Photo Gallery with Express & MongoDB · Built with React
+        CloudSnap · Photo Gallery Board · Powered by MongoDB & Express
       </footer>
 
     </div>

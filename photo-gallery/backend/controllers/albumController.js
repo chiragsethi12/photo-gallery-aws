@@ -1,5 +1,6 @@
 // controllers/albumController.js - CRUD operations for Album models
 const Album = require('../models/Album');
+const Image = require('../models/Image');
 
 /**
  * POST /api/albums
@@ -7,7 +8,7 @@ const Album = require('../models/Album');
  */
 const createAlbum = async (req, res) => {
   try {
-    const { name, description, coverImage, createdBy } = req.body;
+    const { name, description, coverImage } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'Album name is required.' });
@@ -17,7 +18,7 @@ const createAlbum = async (req, res) => {
       name,
       description,
       coverImage,
-      createdBy,
+      createdBy: req.user.id, // Authenticated user
     });
 
     const savedAlbum = await album.save();
@@ -31,12 +32,33 @@ const createAlbum = async (req, res) => {
 
 /**
  * GET /api/albums
- * Retrieves all albums, sorted newest first.
+ * Retrieves all albums, sorted newest first, enriched with cover image and image count.
  */
 const getAlbums = async (req, res) => {
   try {
     const albums = await Album.find().sort({ createdAt: -1 });
-    res.status(200).json(albums);
+    
+    const enrichedAlbums = await Promise.all(
+      albums.map(async (album) => {
+        const imageCount = await Image.countDocuments({ album: album._id });
+        
+        let coverImage = album.coverImage;
+        if (!coverImage) {
+          const firstImage = await Image.findOne({ album: album._id }).sort({ createdAt: 1 });
+          if (firstImage) {
+            coverImage = firstImage.url;
+          }
+        }
+
+        return {
+          ...album.toObject(),
+          imageCount,
+          coverImage,
+        };
+      })
+    );
+
+    res.status(200).json(enrichedAlbums);
   } catch (error) {
     console.error('Get albums error:', error.message);
     res.status(500).json({ error: 'Failed to retrieve albums. ' + error.message });
@@ -53,7 +75,21 @@ const getAlbumById = async (req, res) => {
     if (!album) {
       return res.status(404).json({ error: 'Album not found.' });
     }
-    res.status(200).json(album);
+    
+    const imageCount = await Image.countDocuments({ album: album._id });
+    let coverImage = album.coverImage;
+    if (!coverImage) {
+      const firstImage = await Image.findOne({ album: album._id }).sort({ createdAt: 1 });
+      if (firstImage) {
+        coverImage = firstImage.url;
+      }
+    }
+
+    res.status(200).json({
+      ...album.toObject(),
+      imageCount,
+      coverImage,
+    });
   } catch (error) {
     console.error('Get album by ID error:', error.message);
     res.status(500).json({ error: 'Failed to retrieve album. ' + error.message });

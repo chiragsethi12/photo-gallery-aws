@@ -1,21 +1,38 @@
-// src/components/ImageCard.jsx - Individual gallery image card with hover overlay
+// src/components/ImageCard.jsx - Individual gallery card with likes, download, and tags
 import React, { useState } from 'react';
 
 /**
  * ImageCard
  * Props:
- *   image    - { publicId, url, createdAt, width, height, format }
- *   onDelete - callback(publicId)
- *   deleting - boolean (true while DELETE request is in flight for this card)
+ *   image          - { _id, publicId, url, title, tags, createdAt, width, height, format, favoritedBy }
+ *   onDelete       - callback(publicId)
+ *   deleting       - boolean
+ *   onClick        - callback to open Lightbox
+ *   currentUser    - Active user object
+ *   toggleFavorite - callback(imageId, user)
+ *   onTagClick     - callback(tag)
  */
-const ImageCard = ({ image, onDelete, deleting, onClick, currentUser }) => {
+const ImageCard = ({
+  image,
+  onDelete,
+  deleting,
+  onClick,
+  currentUser,
+  toggleFavorite,
+  onTagClick,
+}) => {
   const [loaded, setLoaded]       = useState(false);
   const [imgError, setImgError]   = useState(false);
-  const [confirming, setConfirming] = useState(false); // show confirm UI before delete
+  const [confirming, setConfirming] = useState(false);
 
   const isOwner = image.uploadedBy && currentUser && (
     image.uploadedBy === currentUser.id || 
     (image.uploadedBy._id && image.uploadedBy._id === currentUser.id)
+  );
+
+  const isFavorited = image.favoritedBy && currentUser && (
+    image.favoritedBy.includes(currentUser.id) ||
+    image.favoritedBy.some(id => id === currentUser.id || id._id === currentUser.id)
   );
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -27,15 +44,9 @@ const ImageCard = ({ image, onDelete, deleting, onClick, currentUser }) => {
     } catch { return '—'; }
   };
 
-  const formatSize = (bytes) => {
-    if (!bytes) return '';
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
   const filename = image.publicId?.split('/').pop() || 'image';
 
-  // ── Delete flow ───────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleDeleteClick = (e) => {
     e.stopPropagation();
     if (!confirming) { setConfirming(true); return; }
@@ -46,6 +57,24 @@ const ImageCard = ({ image, onDelete, deleting, onClick, currentUser }) => {
   const handleCancelDelete = (e) => {
     e.stopPropagation();
     setConfirming(false);
+  };
+
+  const handleFavoriteClick = (e) => {
+    e.stopPropagation();
+    if (toggleFavorite) {
+      toggleFavorite(image._id, currentUser);
+    }
+  };
+
+  const handleDownload = (e) => {
+    e.stopPropagation();
+    const link = document.createElement('a');
+    link.href = image.url;
+    link.download = image.title || filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -74,7 +103,7 @@ const ImageCard = ({ image, onDelete, deleting, onClick, currentUser }) => {
       {/* ── Actual image ─────────────────────────────────────────────────── */}
       <img
         src={image.url}
-        alt={filename}
+        alt={image.title || filename}
         loading="lazy"
         onLoad={() => setLoaded(true)}
         onError={() => { setImgError(true); setLoaded(true); }}
@@ -82,56 +111,107 @@ const ImageCard = ({ image, onDelete, deleting, onClick, currentUser }) => {
       />
 
       {/* ── Hover overlay ────────────────────────────────────────────────── */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between p-3">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between p-3">
 
-        {/* Top-right: delete button */}
-        <div className="flex justify-end">
-          {isOwner && (
-            !confirming ? (
-              <button
-                onClick={handleDeleteClick}
-                disabled={deleting}
-                title="Delete image"
-                className="flex items-center justify-center w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm hover:bg-red-600/90 text-white transition-all duration-200 disabled:opacity-50"
-                id={`delete-btn-${image.publicId}`}
-              >
-                {deleting ? (
-                  <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-                  </svg>
-                )}
-              </button>
-            ) : (
-              /* Confirm / Cancel row */
-              <div className="flex gap-1.5">
-                <button onClick={handleCancelDelete} className="text-xs px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
-                  Cancel
-                </button>
-                <button onClick={handleDeleteClick} className="text-xs px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors font-medium">
-                  Confirm
-                </button>
-              </div>
-            )
-          )}
-        </div>
+        {/* Top row: Favorite & Action Buttons */}
+        <div className="flex justify-between items-start">
+          {/* Favorite button */}
+          <button
+            onClick={handleFavoriteClick}
+            className={`flex items-center justify-center w-8 h-8 rounded-xl backdrop-blur-sm transition-all duration-200 ${
+              isFavorited
+                ? 'bg-red-500/20 text-red-500 border border-red-500/20 hover:bg-red-500/30'
+                : 'bg-black/60 border border-white/5 text-white hover:text-red-400'
+            }`}
+            title={isFavorited ? 'Unfavorite' : 'Favorite'}
+          >
+            <svg className="w-4 h-4" fill={isFavorited ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </button>
 
-        {/* Bottom: file name & date */}
-        <div>
-          <p className="text-xs font-medium text-white truncate" title={filename}>{filename}</p>
-          <div className="flex items-center justify-between mt-0.5">
-            <span className="text-[10px] text-slate-400">{formatDate(image.createdAt)}</span>
-            {image.width && image.height && (
-              <span className="text-[10px] text-slate-400">
-                {image.width}x{image.height} ({image.format})
-              </span>
+          {/* Action Row */}
+          <div className="flex items-center gap-1.5">
+            {/* Download button */}
+            <button
+              onClick={handleDownload}
+              className="flex items-center justify-center w-8 h-8 rounded-xl bg-black/60 border border-white/5 backdrop-blur-sm text-white hover:text-indigo-400 transition-all duration-200"
+              title="Download image"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 3v12"/>
+              </svg>
+            </button>
+
+            {/* Delete button (Owner only) */}
+            {isOwner && (
+              !confirming ? (
+                <button
+                  onClick={handleDeleteClick}
+                  disabled={deleting}
+                  title="Delete image"
+                  className="flex items-center justify-center w-8 h-8 rounded-xl bg-black/60 border border-white/5 backdrop-blur-sm hover:bg-red-600/90 text-white transition-all duration-200 disabled:opacity-50"
+                  id={`delete-btn-${image.publicId}`}
+                >
+                  {deleting ? (
+                    <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                    </svg>
+                  )}
+                </button>
+              ) : (
+                <div className="flex gap-1 bg-black/80 p-1 border border-white/5 rounded-xl">
+                  <button onClick={handleCancelDelete} className="text-[9px] px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition-all duration-150">
+                    Cancel
+                  </button>
+                  <button onClick={handleDeleteClick} className="text-[9px] px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white transition-all duration-150 font-semibold">
+                    Confirm
+                  </button>
+                </div>
+              )
             )}
           </div>
+        </div>
+
+        {/* Bottom: file name, info & tags */}
+        <div className="space-y-1.5">
+          <div>
+            <p className="text-xs font-bold text-white truncate" title={image.title || filename}>
+              {image.title || filename}
+            </p>
+            <div className="flex items-center justify-between mt-0.5 text-[9px] text-slate-400">
+              <span>{formatDate(image.createdAt)}</span>
+              {image.width && image.height && (
+                <span>
+                  {image.width}x{image.height} ({image.format})
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Tags */}
+          {image.tags && image.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
+              {image.tags.map((tag) => (
+                <span
+                  key={tag}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onTagClick) onTagClick(tag);
+                  }}
+                  className="text-[8px] bg-white/10 hover:bg-indigo-500/30 hover:text-indigo-200 border border-white/5 px-1.5 py-0.5 rounded transition-all duration-150 font-medium cursor-pointer"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

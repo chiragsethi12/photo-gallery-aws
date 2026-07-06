@@ -1,11 +1,15 @@
-// src/hooks/useGallery.js - Custom hook that manages all gallery state and actions
+// src/hooks/useGallery.js - Custom hook that manages all gallery state, filters, and actions
 import { useState, useEffect, useCallback } from 'react';
-import { fetchImages, deleteImage as apiDeleteImage } from '../api/imageApi';
+import { 
+  fetchImages, 
+  deleteImage as apiDeleteImage, 
+  fetchAlbums as apiFetchAlbums,
+  toggleFavoriteImage as apiToggleFavorite
+} from '../api/imageApi';
 
 /**
  * useGallery
- * Encapsulates the gallery's state: images list, loading, error, and handlers.
- * Used by both Gallery and App so they stay in sync.
+ * Encapsulates the gallery's state: images list, pagination, active filters, loading, and actions.
  */
 const useGallery = () => {
   const [images, setImages]       = useState([]);
@@ -16,27 +20,71 @@ const useGallery = () => {
   const [error, setError]         = useState(null);
   const [deleting, setDeleting]   = useState(null); // publicId of image being deleted
 
+  // ── Filter States ──────────────────────────────────────────────────────────
+  const [selectedAlbum, setSelectedAlbum] = useState('');
+  const [selectedTag, setSelectedTag]     = useState('');
+  const [searchQuery, setSearchQuery]     = useState('');
+
+  // ── Album States ───────────────────────────────────────────────────────────
+  const [albums, setAlbums]             = useState([]);
+  const [albumsLoading, setAlbumsLoading] = useState(false);
+
   // ── Load Images ──────────────────────────────────────────────────────────
-  const loadImages = useCallback(async (page = 1) => {
+  const loadImages = useCallback(async (page = 1, album = selectedAlbum, tag = selectedTag, search = searchQuery) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchImages({ page });
+      const data = await fetchImages({
+        page,
+        album,
+        tag,
+        search
+      });
       setImages(data.images || []);
       setTotalPages(data.totalPages || 1);
       setCurrentPage(data.currentPage || 1);
       setTotalImages(data.totalImages || 0);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load images. Is the backend running?');
+      setError(err.response?.data?.error || 'Failed to load images.');
     } finally {
       setLoading(false);
     }
+  }, [selectedAlbum, selectedTag, searchQuery]);
+
+  // Load initial images
+  useEffect(() => {
+    loadImages(1, '', '', '');
+  }, [loadImages]);
+
+  // ── Fetch Albums ──────────────────────────────────────────────────────────
+  const loadAlbums = useCallback(async () => {
+    setAlbumsLoading(true);
+    try {
+      const data = await apiFetchAlbums();
+      setAlbums(data || []);
+    } catch (err) {
+      console.error('Failed to load albums:', err);
+    } finally {
+      setAlbumsLoading(false);
+    }
   }, []);
 
-  // Fetch images on first render
-  useEffect(() => {
-    loadImages(1);
-  }, [loadImages]);
+  // ── Filter Helpers ────────────────────────────────────────────────────────
+  const filterByAlbum = useCallback((albumId) => {
+    setSelectedAlbum(albumId);
+    setSelectedTag(''); // Clear tag when switching albums
+    loadImages(1, albumId, '', searchQuery);
+  }, [searchQuery, loadImages]);
+
+  const filterByTag = useCallback((tag) => {
+    setSelectedTag(tag);
+    loadImages(1, selectedAlbum, tag, searchQuery);
+  }, [selectedAlbum, searchQuery, loadImages]);
+
+  const handleSearch = useCallback((query) => {
+    setSearchQuery(query);
+    loadImages(1, selectedAlbum, selectedTag, query);
+  }, [selectedAlbum, selectedTag, loadImages]);
 
   // ── Delete Image ─────────────────────────────────────────────────────────
   const deleteImage = useCallback(async (publicId) => {
@@ -47,18 +95,56 @@ const useGallery = () => {
       // Remove the deleted image from local state without re-fetching
       setImages((prev) => prev.filter((img) => img.publicId !== publicId));
       setTotalImages((prev) => Math.max(0, prev - 1));
+      // Refresh albums counts
+      loadAlbums();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to delete image.');
     } finally {
       setDeleting(null);
     }
-  }, []);
+  }, [loadAlbums]);
 
-  // ── Add Image (after upload, avoid extra list call) ───────────────────
+  // ── Toggle Favorite (Optimistic UI Update) ────────────────────────────────
+  const toggleFavorite = useCallback(async (imageId, currentUser) => {
+    if (!currentUser) return;
+
+    // Save previous state for rollback if error
+    let rolledBack = false;
+
+    // Apply local state updates optimistically
+    setImages((prev) =>
+      prev.map((img) => {
+        if (img._id === imageId) {
+          const favoritedBy = [...(img.favoritedBy || [])];
+          const userIdx = favoritedBy.indexOf(currentUser.id);
+          if (userIdx === -1) {
+            favoritedBy.push(currentUser.id);
+          } else {
+            favoritedBy.splice(userIdx, 1);
+          }
+          return { ...img, favoritedBy };
+        }
+        return img;
+      })
+    );
+
+    try {
+      await apiToggleFavorite(imageId);
+    } catch (err) {
+      console.error('Failed to toggle favorite on server:', err);
+      rolledBack = true;
+      // Fetch latest images to synchronize state on error
+      loadImages(currentPage);
+    }
+  }, [currentPage, loadImages]);
+
+  // ── Add Image ────────────────────────────────────────────────────────────
   const addImage = useCallback((newImage) => {
     setImages((prev) => [newImage, ...prev]);
     setTotalImages((prev) => prev + 1);
-  }, []);
+    // Refresh album lists in case a new cover image or counts changed
+    loadAlbums();
+  }, [loadAlbums]);
 
   return {
     images,
@@ -68,8 +154,18 @@ const useGallery = () => {
     totalPages,
     currentPage,
     totalImages,
+    selectedAlbum,
+    selectedTag,
+    searchQuery,
+    albums,
+    albumsLoading,
     loadImages,
+    loadAlbums,
+    filterByAlbum,
+    filterByTag,
+    handleSearch,
     deleteImage,
+    toggleFavorite,
     addImage,
   };
 };

@@ -21,19 +21,30 @@ axios.interceptors.request.use(
  * Uses multipart/form-data so multer can parse it server-side.
  *
  * @param {File} file - The image file selected by the user
- * @param {Function} onUploadProgress - Optional progress callback (0-100)
- * @returns {Promise<{key, url, message}>}
+ * @param {object|Function} options - Optional fields like { title, tags, album } OR onUploadProgress function
+ * @param {Function} [onUploadProgress] - Optional progress callback (0-100)
+ * @returns {Promise<object>} Saved MongoDB Image document
  */
-export const uploadImage = async (file, onUploadProgress) => {
+export const uploadImage = async (file, options = {}, onUploadProgress) => {
+  let progressCallback = onUploadProgress;
+  let opts = options;
+  if (typeof options === 'function') {
+    progressCallback = options;
+    opts = {};
+  }
+
   const formData = new FormData();
-  formData.append('image', file); // 'image' must match the multer field name
+  formData.append('image', file);
+  if (opts.title) formData.append('title', opts.title);
+  if (opts.tags) formData.append('tags', opts.tags);
+  if (opts.album) formData.append('album', opts.album);
 
   const response = await axios.post(`${API_BASE}/upload`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (progressEvent) => {
-      if (onUploadProgress && progressEvent.total) {
+      if (progressCallback && progressEvent.total) {
         const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onUploadProgress(pct);
+        progressCallback(pct);
       }
     },
   });
@@ -75,5 +86,34 @@ export const fetchImages = async (page = 1, limit = 12, tag = '', album = '', se
 export const deleteImage = async (publicId) => {
   const encodedPublicId = encodeURIComponent(publicId);
   const response = await axios.delete(`${API_BASE}/image/${encodedPublicId}`);
+  return response.data;
+};
+
+/**
+ * Toggle favorite status on a specific image.
+ * @param {string} id - Image ObjectId
+ * @returns {Promise<{message, favoritedBy: string[], isFavorited: boolean}>}
+ */
+export const toggleFavoriteImage = async (id) => {
+  const response = await axios.post(`${API_BASE}/image/${id}/favorite`);
+  return response.data;
+};
+
+/**
+ * Fetch all albums.
+ * @returns {Promise<Array>} List of albums enriched with cover images and image counts.
+ */
+export const fetchAlbums = async () => {
+  const response = await axios.get(`${API_BASE}/albums`);
+  return response.data;
+};
+
+/**
+ * Create a new album.
+ * @param {object} albumData - { name, description, coverImage }
+ * @returns {Promise<object>} The saved album document.
+ */
+export const createAlbum = async (albumData) => {
+  const response = await axios.post(`${API_BASE}/albums`, albumData);
   return response.data;
 };
