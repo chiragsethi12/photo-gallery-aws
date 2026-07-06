@@ -13,7 +13,18 @@ import Lightbox from './Lightbox';
  *   onDelete - (publicId) => void
  *   onRetry  - () => void: re-fetch callback
  */
-const Gallery = ({ images, loading, error, deleting, onDelete, onRetry }) => {
+const Gallery = ({
+  images,
+  totalPages = 1,
+  currentPage = 1,
+  onPageChange,
+  totalImages = 0,
+  loading,
+  error,
+  deleting,
+  onDelete,
+  onRetry
+}) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
 
   // ── Lightbox Navigation ──────────────────────────────────────────────────
@@ -90,7 +101,7 @@ const Gallery = ({ images, loading, error, deleting, onDelete, onRetry }) => {
   // ── Image grid ───────────────────────────────────────────────────────────
   return (
     <section>
-      <SectionHeader count={images.length} />
+      <SectionHeader count={totalImages} />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {images.map((image, index) => (
           <ImageCard
@@ -102,6 +113,29 @@ const Gallery = ({ images, loading, error, deleting, onDelete, onRetry }) => {
           />
         ))}
       </div>
+
+      {/* ── Pagination Controls ─────────────────────────────────────────── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-8 p-4 glass rounded-2xl border border-white/5 shadow-lg">
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="px-4 py-2 text-sm font-semibold text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            ← Previous
+          </button>
+          <span className="text-xs text-slate-400 font-medium">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="px-4 py-2 text-sm font-semibold text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            Next →
+          </button>
+        </div>
+      )}
 
       {/* ── Lightbox Modal ────────────────────────────────────────────────── */}
       {selectedIndex !== null && (

@@ -1,13 +1,16 @@
-// controllers/imageController.js - Business logic for Cloudinary image operations
+// controllers/imageController.js - Business logic for Express backend with MongoDB and Cloudinary
 const cloudinary = require('../config/cloudinaryConfig');
 const streamifier = require('streamifier');
+const mongoose = require('mongoose');
+const Image = require('../models/Image');
 
 // ─── Upload Image ─────────────────────────────────────────────────────────────
 
 /**
  * POST /api/upload
  * Accepts a multipart/form-data request containing an image file.
- * Uploads the image to Cloudinary folder "photo-gallery" and returns metadata.
+ * Uploads the image to Cloudinary, then creates a metadata record in MongoDB.
+ * Returns the saved MongoDB document.
  */
 const uploadImage = async (req, res) => {
   try {
@@ -32,65 +35,120 @@ const uploadImage = async (req, res) => {
     };
 
     const result = await uploadToCloudinary(req.file.buffer);
+    console.log(`✅ Cloudinary Uploaded: ${result.public_id}`);
 
-    console.log(`✅ Uploaded: ${result.public_id}`);
+    // Parse tags if provided in the body
+    let parsedTags = [];
+    if (req.body.tags) {
+      if (Array.isArray(req.body.tags)) {
+        parsedTags = req.body.tags;
+      } else if (typeof req.body.tags === 'string') {
+        try {
+          const parsed = JSON.parse(req.body.tags);
+          if (Array.isArray(parsed)) {
+            parsedTags = parsed;
+          } else {
+            parsedTags = req.body.tags.split(',').map(t => t.trim()).filter(Boolean);
+          }
+        } catch (e) {
+          parsedTags = req.body.tags.split(',').map(t => t.trim()).filter(Boolean);
+        }
+      }
+    }
 
-    res.status(200).json({
-      message: 'Image uploaded successfully!',
-      secure_url: result.secure_url,
-      public_id: result.public_id,
+    // Validate album ObjectId if provided
+    let albumId = undefined;
+    if (req.body.album && mongoose.Types.ObjectId.isValid(req.body.album)) {
+      albumId = req.body.album;
+    }
+
+    // Validate uploadedBy ObjectId if provided
+    let uploadedById = undefined;
+    if (req.body.uploadedBy && mongoose.Types.ObjectId.isValid(req.body.uploadedBy)) {
+      uploadedById = req.body.uploadedBy;
+    }
+
+    // Save image metadata in MongoDB
+    const image = new Image({
+      publicId: result.public_id,
+      url: result.secure_url,
       width: result.width,
       height: result.height,
       format: result.format,
-      // Provide camelCase mappings to make it easy for frontend
-      publicId: result.public_id,
-      url: result.secure_url,
+      title: req.body.title || '',
+      tags: parsedTags,
+      album: albumId,
+      uploadedBy: uploadedById,
     });
+
+    const savedImage = await image.save();
+    console.log(`💾 Saved metadata to MongoDB: ${savedImage._id}`);
+
+    res.status(200).json(savedImage);
   } catch (error) {
     console.error('Upload error:', error.message);
     res.status(500).json({ error: 'Failed to upload image. ' + error.message });
   }
 };
 
-// ─── Get All Images ───────────────────────────────────────────────────────────
+// ─── Get All Images (Query MongoDB) ───────────────────────────────────────────
 
 /**
  * GET /api/images
- * Lists all resources stored under the "photo-gallery" prefix in Cloudinary.
- * Returns an array of { publicId, url, width, height, format, createdAt } objects.
+ * Queries the MongoDB Image collection instead of Cloudinary API.
+ * Supports query params: page, limit, tag, album, search.
+ * Returns: { images, totalPages, currentPage, totalImages }
  */
 const getImages = async (req, res) => {
   try {
-    const response = await cloudinary.api.resources({
-      type: 'upload',
-      prefix: 'photo-gallery/',
-      max_results: 100,
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 12;
+    const skip = (page - 1) * limit;
+
+    const filter = {};
+
+    // Filter by tag
+    if (req.query.tag) {
+      filter.tags = req.query.tag;
+    }
+
+    // Filter by album id
+    if (req.query.album) {
+      if (mongoose.Types.ObjectId.isValid(req.query.album)) {
+        filter.album = req.query.album;
+      }
+    }
+
+    // Search by title (case-insensitive match)
+    if (req.query.search) {
+      filter.title = { $regex: req.query.search, $options: 'i' };
+    }
+
+    const totalImages = await Image.countDocuments(filter);
+    const images = await Image.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalPages = Math.ceil(totalImages / limit);
+
+    res.status(200).json({
+      images,
+      totalPages,
+      currentPage: page,
+      totalImages,
     });
-
-    const images = (response.resources || []).map((resource) => ({
-      publicId: resource.public_id,
-      url: resource.secure_url,
-      width: resource.width,
-      height: resource.height,
-      format: resource.format,
-      createdAt: resource.created_at,
-    }));
-
-    // Sort newest first
-    images.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    res.status(200).json({ images });
   } catch (error) {
     console.error('Fetch images error:', error.message);
     res.status(500).json({ error: 'Failed to fetch images. ' + error.message });
   }
 };
 
-// ─── Delete Image ─────────────────────────────────────────────────────────────
+// ─── Delete Image (Cloudinary + MongoDB) ──────────────────────────────────────
 
 /**
  * DELETE /api/image/:publicId(*)
- * Deletes a specific resource from Cloudinary by its publicId.
+ * Deletes from Cloudinary via public_id AND then deletes from MongoDB.
  */
 const deleteImage = async (req, res) => {
   try {
@@ -100,9 +158,28 @@ const deleteImage = async (req, res) => {
       return res.status(400).json({ error: 'Image publicId is required.' });
     }
 
-    const result = await cloudinary.uploader.destroy(publicId);
+    // 1. Delete from Cloudinary
+    try {
+      const cloudinaryResult = await cloudinary.uploader.destroy(publicId);
+      console.log(`🗑️ Cloudinary destroy result for ${publicId}:`, cloudinaryResult.result);
+    } catch (cloudinaryErr) {
+      console.error(`❌ Cloudinary delete error for ${publicId}:`, cloudinaryErr.message);
+      return res.status(500).json({ error: 'Failed to delete from Cloudinary: ' + cloudinaryErr.message });
+    }
 
-    console.log(`🗑️  Deleted: ${publicId}, result: ${result.result}`);
+    // 2. Delete from MongoDB
+    try {
+      const dbResult = await Image.findOneAndDelete({ publicId });
+      if (!dbResult) {
+        console.warn(`⚠️ Document not found in MongoDB for publicId: ${publicId}`);
+      } else {
+        console.log(`🗑️ MongoDB document deleted for publicId: ${publicId}`);
+      }
+    } catch (dbErr) {
+      console.error(`❌ MongoDB delete error for ${publicId}:`, dbErr.message);
+      return res.status(500).json({ error: 'Failed to delete metadata from MongoDB: ' + dbErr.message });
+    }
+
     res.status(200).json({ message: 'Image deleted successfully!', publicId });
   } catch (error) {
     console.error('Delete error:', error.message);

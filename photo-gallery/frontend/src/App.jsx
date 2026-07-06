@@ -7,13 +7,24 @@ import useGallery from './hooks/useGallery';
 
 function App() {
   // All gallery state is managed in one custom hook
-  const { images, loading, error, deleting, loadImages, deleteImage, addImage } = useGallery();
+  const { 
+    images, 
+    loading, 
+    error, 
+    deleting, 
+    totalPages, 
+    currentPage, 
+    totalImages, 
+    loadImages, 
+    deleteImage, 
+    addImage 
+  } = useGallery();
 
   return (
     <div className="min-h-screen bg-dark-900">
 
       {/* ── Top navigation ──────────────────────────────────────────────── */}
-      <Navbar onRefresh={loadImages} imageCount={images.length} />
+      <Navbar onRefresh={() => loadImages(1)} imageCount={totalImages} />
 
       {/* ── Page hero banner ────────────────────────────────────────────── */}
       <div className="relative overflow-hidden bg-gradient-to-b from-indigo-950/40 to-transparent border-b border-white/5 py-10 px-4">
@@ -60,11 +71,15 @@ function App() {
           <div className="flex-1 min-w-0">
             <Gallery
               images={images}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              totalImages={totalImages}
               loading={loading}
               error={error}
               deleting={deleting}
               onDelete={deleteImage}
-              onRetry={loadImages}
+              onRetry={() => loadImages(currentPage)}
+              onPageChange={loadImages}
             />
           </div>
 

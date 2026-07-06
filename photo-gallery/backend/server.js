@@ -3,7 +3,12 @@ require('dotenv').config(); // Load environment variables from .env file
 
 const express = require('express');
 const cors = require('cors');
+const connectDB = require('./config/db');
 const imageRoutes = require('./routes/imageRoutes');
+const albumRoutes = require('./routes/albumRoutes');
+
+// Connect to Database
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,6 +28,7 @@ app.use(express.json());
 
 // All image-related API routes are prefixed with /api
 app.use('/api', imageRoutes);
+app.use('/api/albums', albumRoutes);
 
 // Health-check route
 app.get('/', (req, res) => {
