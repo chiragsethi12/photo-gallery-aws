@@ -6,6 +6,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const imageRoutes = require('./routes/imageRoutes');
 const albumRoutes = require('./routes/albumRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 // Connect to Database
 connectDB();
@@ -29,6 +30,7 @@ app.use(express.json());
 // All image-related API routes are prefixed with /api
 app.use('/api', imageRoutes);
 app.use('/api/albums', albumRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health-check route
 app.get('/', (req, res) => {

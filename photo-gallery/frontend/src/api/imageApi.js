@@ -4,6 +4,18 @@ import axios from 'axios';
 // Base URL of the Express backend
 const API_BASE = 'http://localhost:5000/api';
 
+// Interceptor to inject JWT token into header for protected API endpoints
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 /**
  * Upload a single image file to the backend.
  * Uses multipart/form-data so multer can parse it server-side.

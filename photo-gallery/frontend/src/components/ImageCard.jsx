@@ -8,10 +8,15 @@ import React, { useState } from 'react';
  *   onDelete - callback(publicId)
  *   deleting - boolean (true while DELETE request is in flight for this card)
  */
-const ImageCard = ({ image, onDelete, deleting, onClick }) => {
+const ImageCard = ({ image, onDelete, deleting, onClick, currentUser }) => {
   const [loaded, setLoaded]       = useState(false);
   const [imgError, setImgError]   = useState(false);
   const [confirming, setConfirming] = useState(false); // show confirm UI before delete
+
+  const isOwner = image.uploadedBy && currentUser && (
+    image.uploadedBy === currentUser.id || 
+    (image.uploadedBy._id && image.uploadedBy._id === currentUser.id)
+  );
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const formatDate = (iso) => {
@@ -81,36 +86,38 @@ const ImageCard = ({ image, onDelete, deleting, onClick }) => {
 
         {/* Top-right: delete button */}
         <div className="flex justify-end">
-          {!confirming ? (
-            <button
-              onClick={handleDeleteClick}
-              disabled={deleting}
-              title="Delete image"
-              className="flex items-center justify-center w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm hover:bg-red-600/90 text-white transition-all duration-200 disabled:opacity-50"
-              id={`delete-btn-${image.publicId}`}
-            >
-              {deleting ? (
-                <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-                </svg>
-              )}
-            </button>
-          ) : (
-            /* Confirm / Cancel row */
-            <div className="flex gap-1.5">
-              <button onClick={handleCancelDelete} className="text-xs px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
-                Cancel
+          {isOwner && (
+            !confirming ? (
+              <button
+                onClick={handleDeleteClick}
+                disabled={deleting}
+                title="Delete image"
+                className="flex items-center justify-center w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm hover:bg-red-600/90 text-white transition-all duration-200 disabled:opacity-50"
+                id={`delete-btn-${image.publicId}`}
+              >
+                {deleting ? (
+                  <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                  </svg>
+                )}
               </button>
-              <button onClick={handleDeleteClick} className="text-xs px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors font-medium">
-                Confirm
-              </button>
-            </div>
+            ) : (
+              /* Confirm / Cancel row */
+              <div className="flex gap-1.5">
+                <button onClick={handleCancelDelete} className="text-xs px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
+                  Cancel
+                </button>
+                <button onClick={handleDeleteClick} className="text-xs px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors font-medium">
+                  Confirm
+                </button>
+              </div>
+            )
           )}
         </div>
 

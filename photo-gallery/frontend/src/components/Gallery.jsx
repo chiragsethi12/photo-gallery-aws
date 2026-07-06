@@ -23,7 +23,8 @@ const Gallery = ({
   error,
   deleting,
   onDelete,
-  onRetry
+  onRetry,
+  currentUser
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
 
@@ -110,6 +111,7 @@ const Gallery = ({
             onDelete={onDelete}
             deleting={deleting === image.publicId}
             onClick={() => setSelectedIndex(index)}
+            currentUser={currentUser}
           />
         ))}
       </div>

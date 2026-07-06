@@ -38,7 +38,7 @@ const ImageSchema = new mongoose.Schema({
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: false,
+    required: true,
   },
   createdAt: {
     type: Date,

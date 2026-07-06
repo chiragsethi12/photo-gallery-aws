@@ -1,12 +1,11 @@
-// src/components/Navbar.jsx - Top navigation bar
+// src/components/Navbar.jsx - Top navigation bar with user context and actions
 import React from 'react';
 
 /**
  * Navbar
- * Displays the app brand and a refresh button.
- * onRefresh is passed down from App to re-fetch the gallery.
+ * Displays the app brand, active user status, and action buttons.
  */
-const Navbar = ({ onRefresh, imageCount }) => (
+const Navbar = ({ onRefresh, imageCount, user, onLogout }) => (
   <header className="sticky top-0 z-50 glass border-b border-white/5 shadow-xl shadow-black/30">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between h-16">
@@ -22,12 +21,26 @@ const Navbar = ({ onRefresh, imageCount }) => (
           </div>
           <div>
             <h1 className="text-lg font-bold gradient-text leading-tight">CloudSnap</h1>
-            <p className="text-[10px] text-slate-500 leading-none hidden sm:block">Photo Gallery · AWS S3</p>
+            <p className="text-[10px] text-slate-500 leading-none hidden sm:block">Photo Gallery · MongoDB + S3</p>
           </div>
         </div>
 
         {/* ── Stats & Actions ───────────────────────────────────────────── */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3.5">
+          {/* User info display */}
+          {user && (
+            <div className="flex items-center gap-2 text-xs text-slate-400 bg-white/3 border border-white/5 px-3 py-1.5 rounded-full">
+              <span className="font-medium text-slate-300">Logged in as <strong className="text-white">{user.name}</strong></span>
+              <span className="text-white/10">|</span>
+              <button
+                onClick={onLogout}
+                className="font-bold text-red-400 hover:text-red-300 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          )}
+
           {/* Image count badge */}
           <span className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
             <svg className="w-3.5 h-3.5 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">

@@ -62,12 +62,6 @@ const uploadImage = async (req, res) => {
       albumId = req.body.album;
     }
 
-    // Validate uploadedBy ObjectId if provided
-    let uploadedById = undefined;
-    if (req.body.uploadedBy && mongoose.Types.ObjectId.isValid(req.body.uploadedBy)) {
-      uploadedById = req.body.uploadedBy;
-    }
-
     // Save image metadata in MongoDB
     const image = new Image({
       publicId: result.public_id,
@@ -78,7 +72,7 @@ const uploadImage = async (req, res) => {
       title: req.body.title || '',
       tags: parsedTags,
       album: albumId,
-      uploadedBy: uploadedById,
+      uploadedBy: req.user.id, // Set automatically from authentication middleware
     });
 
     const savedImage = await image.save();
@@ -158,6 +152,17 @@ const deleteImage = async (req, res) => {
       return res.status(400).json({ error: 'Image publicId is required.' });
     }
 
+    // Find the image document in DB first to check ownership
+    const imageDoc = await Image.findOne({ publicId });
+    if (!imageDoc) {
+      return res.status(404).json({ error: 'Image not found in database.' });
+    }
+
+    // Check if current user is the owner
+    if (imageDoc.uploadedBy && imageDoc.uploadedBy.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'You can only delete your own images' });
+    }
+
     // 1. Delete from Cloudinary
     try {
       const cloudinaryResult = await cloudinary.uploader.destroy(publicId);
@@ -170,11 +175,7 @@ const deleteImage = async (req, res) => {
     // 2. Delete from MongoDB
     try {
       const dbResult = await Image.findOneAndDelete({ publicId });
-      if (!dbResult) {
-        console.warn(`⚠️ Document not found in MongoDB for publicId: ${publicId}`);
-      } else {
-        console.log(`🗑️ MongoDB document deleted for publicId: ${publicId}`);
-      }
+      console.log(`🗑️ MongoDB document deleted for publicId: ${publicId}`);
     } catch (dbErr) {
       console.error(`❌ MongoDB delete error for ${publicId}:`, dbErr.message);
       return res.status(500).json({ error: 'Failed to delete metadata from MongoDB: ' + dbErr.message });

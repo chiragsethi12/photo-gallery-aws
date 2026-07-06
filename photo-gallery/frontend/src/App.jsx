@@ -1,11 +1,17 @@
-// src/App.jsx - Root application component
-import React from 'react';
+// src/App.jsx - Root application component with user authentication context
+import React, { useContext, useState } from 'react';
 import Navbar  from './components/Navbar';
 import Upload  from './components/Upload';
 import Gallery from './components/Gallery';
 import useGallery from './hooks/useGallery';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
 
-function App() {
+function MainApp() {
+  const { user, logout } = useContext(AuthContext);
+  const [isLoginView, setIsLoginView] = useState(true);
+
   // All gallery state is managed in one custom hook
   const { 
     images, 
@@ -20,11 +26,28 @@ function App() {
     addImage 
   } = useGallery();
 
+  // Show authentication screen if not logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#070d1a] flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Decorative background glows */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-indigo-600/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-purple-600/10 blur-3xl pointer-events-none" />
+        
+        {isLoginView ? (
+          <LoginForm onToggleForm={() => setIsLoginView(false)} />
+        ) : (
+          <RegisterForm onToggleForm={() => setIsLoginView(true)} />
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-[#070d1a]">
 
       {/* ── Top navigation ──────────────────────────────────────────────── */}
-      <Navbar onRefresh={() => loadImages(1)} imageCount={totalImages} />
+      <Navbar onRefresh={() => loadImages(1)} imageCount={totalImages} user={user} onLogout={logout} />
 
       {/* ── Page hero banner ────────────────────────────────────────────── */}
       <div className="relative overflow-hidden bg-gradient-to-b from-indigo-950/40 to-transparent border-b border-white/5 py-10 px-4">
@@ -37,7 +60,7 @@ function App() {
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path d="M5.5 16.5l-3-3 3-3M14.5 7.5l3 3-3 3M9 4l2 12"/>
             </svg>
-            Powered by AWS S3 · ap-south-1
+            Secure MongoDB Persisted Metadata
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold gradient-text mb-3 leading-tight">
             Cloud Photo Gallery
@@ -62,7 +85,7 @@ function App() {
                 <svg className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 </svg>
-                <p>Files are encrypted-at-rest in your S3 bucket. AWS credentials are stored securely in server environment variables.</p>
+                <p>Files are encrypted-at-rest in your Cloudinary storage. MongoDB persists records and coordinates ownership authorization.</p>
               </div>
             </div>
           </aside>
@@ -80,6 +103,7 @@ function App() {
               onDelete={deleteImage}
               onRetry={() => loadImages(currentPage)}
               onPageChange={loadImages}
+              currentUser={user}
             />
           </div>
 
@@ -88,10 +112,18 @@ function App() {
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer className="border-t border-white/5 mt-10 py-6 text-center text-xs text-slate-600">
-        CloudSnap · Photo Gallery with AWS S3 · Built with React + Node.js
+        CloudSnap · Photo Gallery with Express & MongoDB · Built with React
       </footer>
 
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }
 
