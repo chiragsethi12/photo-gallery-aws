@@ -1,6 +1,5 @@
 // tests/image.test.js - Integration tests for Image uploading, paginated fetches, and ownership checks
 const request = require('supertest');
-const app = require('../server');
 const Image = require('../models/Image');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
@@ -45,8 +44,13 @@ const generateToken = (user) => {
 };
 
 describe('Image Endpoints', () => {
+  let app;
   let userA, userB;
   let tokenA, tokenB;
+
+  beforeAll(() => {
+    app = require('../server');
+  });
 
   beforeEach(async () => {
     // Create test users

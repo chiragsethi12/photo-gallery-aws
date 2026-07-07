@@ -25,12 +25,5 @@
     "mongodb-memory-server": "^9.1.6",
     "nodemon": "^3.1.0",
     "supertest": "^6.3.4"
-  },
-  "jest": {
-    "setupFilesAfterEach": [
-      "<rootDir>/tests/setup.js"
-    ],
-    "testEnvironment": "node",
-    "testTimeout": 30000
   }
 }

@@ -31,7 +31,7 @@ describe('Upload Component', () => {
 
     // Assert that error message is rendered
     await waitFor(() => {
-      expect(screen.getByText(/File type not allowed/i)).toBeInTheDocument();
+      expect(screen.getByText(/File type must be/i)).toBeInTheDocument();
       expect(screen.getByText(/document.txt/i)).toBeInTheDocument();
     });
   });
