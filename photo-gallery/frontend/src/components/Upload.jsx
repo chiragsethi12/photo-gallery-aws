@@ -16,7 +16,20 @@ const Upload = ({ onUploadSuccess, albums = [] }) => {
   const [isUploadingGlobal, setIsUploadingGlobal] = useState(false);
 
   // ── Drag & Drop configuration ───────────────────────────────────────────
-  const onDrop = (acceptedFiles) => {
+  const onDrop = (acceptedFiles, fileRejections) => {
+    // Handle rejected files (e.g. wrong format, too large)
+    const rejectionUploads = (fileRejections || []).map((rej) => ({
+      id: Math.random().toString(36).substring(7),
+      filename: rej.file.name,
+      progress: 0,
+      status: 'error',
+      error: rej.errors[0]?.message || 'File type not allowed.',
+    }));
+
+    if (rejectionUploads.length > 0) {
+      setUploads((prev) => [...rejectionUploads, ...prev]);
+    }
+
     if (acceptedFiles.length === 0) return;
 
     // Build the array of uploads
