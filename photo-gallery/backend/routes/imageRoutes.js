@@ -10,13 +10,14 @@ const {
   deleteImage,
   toggleFavoriteImage,
 } = require('../controllers/imageController');
+const { uploadValidation } = require('../middleware/validation');
 
 /**
  * POST /api/upload
  * Accepts a single file field named "image".
  * Only accessible to authenticated users.
  */
-router.post('/upload', protect, upload.single('image'), (req, res, next) => {
+router.post('/upload', protect, upload.single('image'), uploadValidation, (req, res, next) => {
   uploadImage(req, res, next);
 });
 

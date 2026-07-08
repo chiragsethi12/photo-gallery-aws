@@ -77,6 +77,15 @@ const ImageCard = ({
     document.body.removeChild(link);
   };
 
+  // Helper to generate a fast, optimized thumbnail using Cloudinary URL transformations
+  const getThumbnailUrl = (url) => {
+    if (!url) return '';
+    if (url.includes('cloudinary.com') && url.includes('/upload/')) {
+      return url.replace('/upload/', '/upload/w_400,q_auto,f_auto/');
+    }
+    return url;
+  };
+
   return (
     <div 
       className="group relative cursor-pointer rounded-2xl overflow-hidden bg-white/3 border border-white/5 shadow-xl shadow-black/30 animate-fade-in hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/10"
@@ -102,7 +111,7 @@ const ImageCard = ({
 
       {/* ── Actual image ─────────────────────────────────────────────────── */}
       <img
-        src={image.url}
+        src={getThumbnailUrl(image.url)}
         alt={image.title || filename}
         loading="lazy"
         onLoad={() => setLoaded(true)}
