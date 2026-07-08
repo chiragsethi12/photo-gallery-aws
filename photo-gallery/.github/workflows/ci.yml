@@ -1,0 +1,38 @@
+# .github/workflows/ci.yml - Automated test run pipeline on main branch updates
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Backend & Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Run Backend test suite
+        run: |
+          cd backend
+          npm ci
+          npm test
+
+      - name: Run Frontend test suite
+        run: |
+          cd frontend
+          npm ci
+          npm test -- --watchAll=false

@@ -1,0 +1,15 @@
+# .dockerignore - Prevent workspace files from bloating build contexts
+.git
+.github
+.env
+backend/.env
+frontend/.env
+node_modules
+**/node_modules
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+frontend/build
+frontend/dist
+backend/build
+backend/dist
