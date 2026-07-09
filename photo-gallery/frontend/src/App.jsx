@@ -4,6 +4,7 @@ import Navbar  from './components/Navbar';
 import Upload  from './components/Upload';
 import Gallery from './components/Gallery';
 import AlbumsView from './components/AlbumsView';
+import SessionsPanel from './components/SessionsPanel';
 import useGallery from './hooks/useGallery';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import LoginForm from './components/LoginForm';
@@ -139,6 +140,8 @@ function MainApp() {
                 onSelectAlbum={handleSelectAlbum}
                 onRefreshAlbums={loadAlbums}
               />
+            ) : viewMode === 'sessions' ? (
+              <SessionsPanel />
             ) : (
               <Gallery
                 images={images}

@@ -32,7 +32,7 @@ app.use(compression());
 // 3. Rate limiting (100 requests per 15 minutes per IP globally)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'test' ? 10000 : 100, // limit each IP requests per windowMs
   message: { error: 'Too many requests from this IP, please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,

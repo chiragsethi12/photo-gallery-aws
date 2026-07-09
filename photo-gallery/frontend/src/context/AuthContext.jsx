@@ -10,29 +10,58 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Initialize auth state from local storage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('token');
+    const storedRefreshToken = localStorage.getItem('refreshToken');
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
       setToken(storedToken);
+      setRefreshToken(storedRefreshToken);
     }
     setLoading(false);
+  }, []);
+
+  // Set up event listeners for silent refresh updates & force logouts from Axios interceptor
+  useEffect(() => {
+    const handleTokensRefreshed = (e) => {
+      setToken(e.detail.token);
+      setRefreshToken(e.detail.refreshToken);
+    };
+
+    const handleLogoutEvent = () => {
+      setToken(null);
+      setRefreshToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener('auth:tokens_refreshed', handleTokensRefreshed);
+    window.addEventListener('auth:logout', handleLogoutEvent);
+
+    return () => {
+      window.removeEventListener('auth:tokens_refreshed', handleTokensRefreshed);
+      window.removeEventListener('auth:logout', handleLogoutEvent);
+    };
   }, []);
 
   // Login handler
   const login = useCallback(async (email, password) => {
     try {
       const response = await axios.post(`${AUTH_API}/login`, { email, password });
-      const { token: receivedToken, user: receivedUser } = response.data;
+      const { token: receivedToken, refreshToken: receivedRefreshToken, user: receivedUser } = response.data;
 
       setToken(receivedToken);
+      setRefreshToken(receivedRefreshToken);
       setUser(receivedUser);
 
+      // NOTE: Storing refresh token in local storage. An httpOnly cookie would be more secure
+      // but requires backend cookie-parser support which is out of scope for this task.
       localStorage.setItem('token', receivedToken);
+      localStorage.setItem('refreshToken', receivedRefreshToken);
       localStorage.setItem('user', JSON.stringify(receivedUser));
 
       return { success: true };
@@ -47,12 +76,16 @@ export const AuthProvider = ({ children }) => {
   const register = useCallback(async (name, email, password) => {
     try {
       const response = await axios.post(`${AUTH_API}/register`, { name, email, password });
-      const { token: receivedToken, user: receivedUser } = response.data;
+      const { token: receivedToken, refreshToken: receivedRefreshToken, user: receivedUser } = response.data;
 
       setToken(receivedToken);
+      setRefreshToken(receivedRefreshToken);
       setUser(receivedUser);
 
+      // NOTE: Storing refresh token in local storage. An httpOnly cookie would be more secure
+      // but requires backend cookie-parser support which is out of scope for this task.
       localStorage.setItem('token', receivedToken);
+      localStorage.setItem('refreshToken', receivedRefreshToken);
       localStorage.setItem('user', JSON.stringify(receivedUser));
 
       return { success: true };
@@ -64,15 +97,31 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Logout handler
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const currentRefreshToken = localStorage.getItem('refreshToken') || refreshToken;
+    const currentToken = localStorage.getItem('token') || token;
+
+    if (currentRefreshToken) {
+      try {
+        // Send request to revoke session (best-effort)
+        await axios.post(`${AUTH_API}/logout`, { refreshToken: currentRefreshToken }, {
+          headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {}
+        });
+      } catch (error) {
+        console.error('Context logout network error:', error);
+      }
+    }
+
     setToken(null);
+    setRefreshToken(null);
     setUser(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-  }, []);
+  }, [token, refreshToken]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, refreshToken, loading, login, register, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

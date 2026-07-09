@@ -1,5 +1,5 @@
 // src/components/Navbar.jsx - Top navigation bar with search and navigation tabs
-import React from 'react';
+import React, { useState } from 'react';
 
 /**
  * Navbar
@@ -105,16 +105,12 @@ const Navbar = ({
             <div className="flex items-center gap-3">
               {/* User info display */}
               {user && (
-                <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-white/3 border border-white/5 px-3 py-1.5 rounded-full">
-                  <span className="font-medium text-slate-300">Logged in as <strong className="text-white">{user.name}</strong></span>
-                  <span className="text-white/10">|</span>
-                  <button
-                    onClick={onLogout}
-                    className="font-bold text-red-400 hover:text-red-300 transition-colors"
-                  >
-                    Logout
-                  </button>
-                </div>
+                <NavbarUserDropdown
+                  user={user}
+                  onLogout={onLogout}
+                  viewMode={viewMode}
+                  onViewModeChange={onViewModeChange}
+                />
               )}
 
               {/* Refresh button */}
@@ -135,6 +131,51 @@ const Navbar = ({
         </div>
       </div>
     </header>
+  );
+};
+
+const NavbarUserDropdown = ({ user, onLogout, viewMode, onViewModeChange }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setDropdownOpen(!dropdownOpen)}
+        className="flex items-center gap-2 text-xs text-slate-400 bg-white/3 border border-white/5 hover:border-white/20 hover:bg-white/5 px-3 py-1.5 rounded-full transition-all duration-200"
+      >
+        <span className="font-medium text-slate-300">Logged in as <strong className="text-white">{user.name}</strong></span>
+        <svg className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      {dropdownOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+          <div className="absolute right-0 mt-2 w-48 rounded-xl bg-[#0f172a]/95 backdrop-blur border border-white/10 shadow-2xl py-1.5 z-20 animate-fade-in font-sans">
+            <button
+              onClick={() => {
+                onViewModeChange('sessions');
+                setDropdownOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-white/5 transition-all duration-150 ${viewMode === 'sessions' ? 'text-indigo-400' : 'text-slate-300'}`}
+            >
+              Active Sessions
+            </button>
+            <hr className="border-white/5 my-1" />
+            <button
+              onClick={() => {
+                onLogout();
+                setDropdownOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-xs font-bold text-red-400 hover:bg-white/5 hover:text-red-300 transition-all duration-150"
+            >
+              Logout
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 };
 

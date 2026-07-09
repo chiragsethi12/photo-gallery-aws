@@ -16,6 +16,66 @@ axios.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Interceptor to refresh access token on 401 unauthorized errors
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Check if error is 401, not already retried, and not the refresh endpoint itself
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !originalRequest._retry &&
+      originalRequest.url &&
+      !originalRequest.url.includes('/auth/refresh')
+    ) {
+      originalRequest._retry = true;
+      const storedRefreshToken = localStorage.getItem('refreshToken');
+      
+      if (storedRefreshToken) {
+        try {
+          // Request token refresh
+          const res = await axios.post(`${API_BASE}/auth/refresh`, {
+            refreshToken: storedRefreshToken,
+          });
+          
+          const { token: newAccessToken, refreshToken: newRefreshToken } = res.data;
+          
+          // Update tokens in local storage
+          localStorage.setItem('token', newAccessToken);
+          localStorage.setItem('refreshToken', newRefreshToken);
+          
+          // Dispatch event to inform AuthContext of updated tokens
+          window.dispatchEvent(
+            new CustomEvent('auth:tokens_refreshed', {
+              detail: { token: newAccessToken, refreshToken: newRefreshToken },
+            })
+          );
+          
+          // Update request header and retry the request
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return axios(originalRequest);
+        } catch (refreshError) {
+          console.error('Refresh token failed:', refreshError);
+          
+          // Clear credentials
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          
+          // Inform AuthContext to clear local state
+          window.dispatchEvent(new CustomEvent('auth:logout'));
+          
+          return Promise.reject(refreshError);
+        }
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
 /**
  * Upload a single image file to the backend.
  * Uses multipart/form-data so multer can parse it server-side.
@@ -115,5 +175,21 @@ export const fetchAlbums = async () => {
  */
 export const createAlbum = async (albumData) => {
   const response = await axios.post(`${API_BASE}/albums`, albumData);
+  return response.data;
+};
+
+/**
+ * Fetch current user's active sessions.
+ */
+export const fetchSessions = async () => {
+  const response = await axios.get(`${API_BASE}/auth/sessions`);
+  return response.data;
+};
+
+/**
+ * Revoke a specific session.
+ */
+export const revokeSession = async (id) => {
+  const response = await axios.delete(`${API_BASE}/auth/sessions/${id}`);
   return response.data;
 };
