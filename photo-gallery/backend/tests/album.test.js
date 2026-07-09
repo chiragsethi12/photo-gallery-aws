@@ -88,17 +88,18 @@ describe('Album Endpoints - DELETE /api/albums/:id', () => {
       .set('Authorization', `Bearer ${tokenA}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.message).toMatch(/deleted successfully/i);
+    expect(res.body.message).toMatch(/soft-deleted successfully/i);
 
-    // Verify the album is deleted
+    // Verify the album is soft-deleted
     const albumInDb = await Album.findById(album._id);
-    expect(albumInDb).toBeNull();
+    expect(albumInDb).toBeTruthy();
+    expect(albumInDb.isDeleted).toBe(true);
 
-    // Verify image references are set to null
+    // Verify image references are NOT set to null (retained for restore support)
     const savedImg1 = await Image.findById(img1._id);
-    expect(savedImg1.album).toBeNull();
+    expect(savedImg1.album).toEqual(album._id);
 
     const savedImg2 = await Image.findById(img2._id);
-    expect(savedImg2.album).toBeNull();
+    expect(savedImg2.album).toEqual(album._id);
   });
 });

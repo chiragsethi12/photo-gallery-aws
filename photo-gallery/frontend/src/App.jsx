@@ -5,6 +5,7 @@ import Upload  from './components/Upload';
 import Gallery from './components/Gallery';
 import AlbumsView from './components/AlbumsView';
 import SessionsPanel from './components/SessionsPanel';
+import TrashView from './components/TrashView';
 import useGallery from './hooks/useGallery';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import LoginForm from './components/LoginForm';
@@ -29,12 +30,20 @@ function MainApp() {
     searchQuery,
     albums,
     albumsLoading,
+    trashImages,
+    trashAlbums,
+    trashLoading,
     loadImages, 
     loadAlbums,
     filterByAlbum,
     filterByTag,
     handleSearch,
     deleteImage, 
+    loadTrash,
+    restoreImage,
+    restoreAlbum,
+    permanentlyDeleteImage,
+    permanentlyDeleteAlbum,
     toggleFavorite,
     addImage 
   } = useGallery();
@@ -142,6 +151,17 @@ function MainApp() {
               />
             ) : viewMode === 'sessions' ? (
               <SessionsPanel />
+            ) : viewMode === 'trash' ? (
+              <TrashView
+                trashImages={trashImages}
+                trashAlbums={trashAlbums}
+                loading={trashLoading}
+                loadTrash={loadTrash}
+                restoreImage={restoreImage}
+                restoreAlbum={restoreAlbum}
+                permanentlyDeleteImage={permanentlyDeleteImage}
+                permanentlyDeleteAlbum={permanentlyDeleteAlbum}
+              />
             ) : (
               <Gallery
                 images={images}

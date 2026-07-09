@@ -193,3 +193,43 @@ export const revokeSession = async (id) => {
   const response = await axios.delete(`${API_BASE}/auth/sessions/${id}`);
   return response.data;
 };
+
+/**
+ * Fetch current user's trashed items.
+ */
+export const fetchTrash = async () => {
+  const response = await axios.get(`${API_BASE}/trash`);
+  return response.data;
+};
+
+/**
+ * Restore a soft-deleted image.
+ */
+export const restoreImage = async (id) => {
+  const response = await axios.post(`${API_BASE}/image/${id}/restore`);
+  return response.data;
+};
+
+/**
+ * Restore a soft-deleted album.
+ */
+export const restoreAlbum = async (id) => {
+  const response = await axios.post(`${API_BASE}/albums/${id}/restore`);
+  return response.data;
+};
+
+/**
+ * Permanently delete an image.
+ */
+export const permanentlyDeleteImage = async (id) => {
+  const response = await axios.delete(`${API_BASE}/image/${id}/permanent`);
+  return response.data;
+};
+
+/**
+ * Permanently delete an album.
+ */
+export const permanentlyDeleteAlbum = async (id) => {
+  const response = await axios.delete(`${API_BASE}/albums/${id}/permanent`);
+  return response.data;
+};

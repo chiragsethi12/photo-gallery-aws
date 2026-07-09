@@ -9,7 +9,10 @@ const {
   getImages,
   deleteImage,
   toggleFavoriteImage,
+  restoreImage,
+  permanentDeleteImage,
 } = require('../controllers/imageController');
+const { getTrashItems } = require('../controllers/trashController');
 const { uploadValidation } = require('../middleware/validation');
 
 /**
@@ -28,10 +31,28 @@ router.post('/upload', protect, upload.single('image'), uploadValidation, (req, 
 router.get('/images', getImages);
 
 /**
+ * GET /api/trash
+ * Retrieves soft-deleted images and albums for the logged-in user.
+ */
+router.get('/trash', protect, getTrashItems);
+
+/**
+ * DELETE /api/image/:id/permanent
+ * Permanently deletes an image (ownership protected).
+ */
+router.delete('/image/:id/permanent', protect, permanentDeleteImage);
+
+/**
  * DELETE /api/image/:publicId
- * Only accessible to the authenticated owner.
+ * Only accessible to the authenticated owner (soft-delete).
  */
 router.delete('/image/:publicId(*)', protect, deleteImage);
+
+/**
+ * POST /api/image/:id/restore
+ * Restores a soft-deleted image (ownership protected).
+ */
+router.post('/image/:id/restore', protect, restoreImage);
 
 /**
  * POST /api/image/:id/favorite

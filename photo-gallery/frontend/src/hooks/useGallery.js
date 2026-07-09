@@ -4,7 +4,12 @@ import {
   fetchImages, 
   deleteImage as apiDeleteImage, 
   fetchAlbums as apiFetchAlbums,
-  toggleFavoriteImage as apiToggleFavorite
+  toggleFavoriteImage as apiToggleFavorite,
+  fetchTrash as apiFetchTrash,
+  restoreImage as apiRestoreImage,
+  restoreAlbum as apiRestoreAlbum,
+  permanentlyDeleteImage as apiPermanentlyDeleteImage,
+  permanentlyDeleteAlbum as apiPermanentlyDeleteAlbum
 } from '../api/imageApi';
 
 /**
@@ -28,6 +33,11 @@ const useGallery = () => {
   // ── Album States ───────────────────────────────────────────────────────────
   const [albums, setAlbums]             = useState([]);
   const [albumsLoading, setAlbumsLoading] = useState(false);
+
+  // ── Trash States ───────────────────────────────────────────────────────────
+  const [trashImages, setTrashImages] = useState([]);
+  const [trashAlbums, setTrashAlbums] = useState([]);
+  const [trashLoading, setTrashLoading] = useState(false);
 
   // ── Load Images ──────────────────────────────────────────────────────────
   const loadImages = useCallback(async (page = 1, album = selectedAlbum, tag = selectedTag, search = searchQuery) => {
@@ -104,12 +114,76 @@ const useGallery = () => {
     }
   }, [loadAlbums]);
 
+  // ── Fetch Trash ──────────────────────────────────────────────────────────
+  const loadTrash = useCallback(async () => {
+    setTrashLoading(true);
+    try {
+      const data = await apiFetchTrash();
+      setTrashImages(data.images || []);
+      setTrashAlbums(data.albums || []);
+    } catch (err) {
+      console.error('Failed to load trash:', err);
+    } finally {
+      setTrashLoading(false);
+    }
+  }, []);
+
+  // ── Restore Image ────────────────────────────────────────────────────────
+  const restoreImage = useCallback(async (id) => {
+    try {
+      const data = await apiRestoreImage(id);
+      // Remove from trash list state
+      setTrashImages((prev) => prev.filter((img) => img._id !== id));
+      // Re-add to local active images state
+      if (data.image) {
+        setImages((prev) => [data.image, ...prev]);
+        setTotalImages((prev) => prev + 1);
+      }
+      loadAlbums();
+    } catch (err) {
+      console.error('Failed to restore image:', err);
+      throw err;
+    }
+  }, [loadAlbums]);
+
+  // ── Restore Album ────────────────────────────────────────────────────────
+  const restoreAlbum = useCallback(async (id) => {
+    try {
+      await apiRestoreAlbum(id);
+      // Remove from trash list state
+      setTrashAlbums((prev) => prev.filter((alb) => alb._id !== id));
+      loadAlbums();
+    } catch (err) {
+      console.error('Failed to restore album:', err);
+      throw err;
+    }
+  }, [loadAlbums]);
+
+  // ── Permanently Delete Image ─────────────────────────────────────────────
+  const permanentlyDeleteImage = useCallback(async (id) => {
+    try {
+      await apiPermanentlyDeleteImage(id);
+      setTrashImages((prev) => prev.filter((img) => img._id !== id));
+    } catch (err) {
+      console.error('Failed to permanently delete image:', err);
+      throw err;
+    }
+  }, []);
+
+  // ── Permanently Delete Album ─────────────────────────────────────────────
+  const permanentlyDeleteAlbum = useCallback(async (id) => {
+    try {
+      await apiPermanentlyDeleteAlbum(id);
+      setTrashAlbums((prev) => prev.filter((alb) => alb._id !== id));
+    } catch (err) {
+      console.error('Failed to permanently delete album:', err);
+      throw err;
+    }
+  }, []);
+
   // ── Toggle Favorite (Optimistic UI Update) ────────────────────────────────
   const toggleFavorite = useCallback(async (imageId, currentUser) => {
     if (!currentUser) return;
-
-    // Save previous state for rollback if error
-    let rolledBack = false;
 
     // Apply local state updates optimistically
     setImages((prev) =>
@@ -132,7 +206,6 @@ const useGallery = () => {
       await apiToggleFavorite(imageId);
     } catch (err) {
       console.error('Failed to toggle favorite on server:', err);
-      rolledBack = true;
       // Fetch latest images to synchronize state on error
       loadImages(currentPage);
     }
@@ -159,12 +232,20 @@ const useGallery = () => {
     searchQuery,
     albums,
     albumsLoading,
+    trashImages,
+    trashAlbums,
+    trashLoading,
     loadImages,
     loadAlbums,
     filterByAlbum,
     filterByTag,
     handleSearch,
     deleteImage,
+    loadTrash,
+    restoreImage,
+    restoreAlbum,
+    permanentlyDeleteImage,
+    permanentlyDeleteAlbum,
     toggleFavorite,
     addImage,
   };

@@ -162,6 +162,15 @@ const NavbarUserDropdown = ({ user, onLogout, viewMode, onViewModeChange }) => {
             >
               Active Sessions
             </button>
+            <button
+              onClick={() => {
+                onViewModeChange('trash');
+                setDropdownOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-white/5 transition-all duration-150 ${viewMode === 'trash' ? 'text-indigo-400' : 'text-slate-300'}`}
+            >
+              Trash Bin
+            </button>
             <hr className="border-white/5 my-1" />
             <button
               onClick={() => {

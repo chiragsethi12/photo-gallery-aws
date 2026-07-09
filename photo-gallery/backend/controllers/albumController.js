@@ -28,18 +28,18 @@ const createAlbum = wrapAsync(async (req, res) => {
 
 /**
  * GET /api/albums
- * Retrieves all albums, sorted newest first, enriched with cover image and image count.
+ * Retrieves all non-deleted albums, sorted newest first, enriched with cover image and image count.
  */
 const getAlbums = wrapAsync(async (req, res) => {
-  const albums = await Album.find().sort({ createdAt: -1 });
+  const albums = await Album.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
   
   const enrichedAlbums = await Promise.all(
     albums.map(async (album) => {
-      const imageCount = await Image.countDocuments({ album: album._id });
+      const imageCount = await Image.countDocuments({ album: album._id, isDeleted: { $ne: true } });
       
       let coverImage = album.coverImage;
       if (!coverImage) {
-        const firstImage = await Image.findOne({ album: album._id }).sort({ createdAt: 1 });
+        const firstImage = await Image.findOne({ album: album._id, isDeleted: { $ne: true } }).sort({ createdAt: 1 });
         if (firstImage) {
           coverImage = firstImage.url;
         }
@@ -58,18 +58,18 @@ const getAlbums = wrapAsync(async (req, res) => {
 
 /**
  * GET /api/albums/:id
- * Retrieves a single album by its ID.
+ * Retrieves a single non-deleted album by its ID.
  */
 const getAlbumById = wrapAsync(async (req, res) => {
-  const album = await Album.findById(req.params.id);
+  const album = await Album.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
   if (!album) {
     throw new AppError('Album not found.', 404);
   }
   
-  const imageCount = await Image.countDocuments({ album: album._id });
+  const imageCount = await Image.countDocuments({ album: album._id, isDeleted: { $ne: true } });
   let coverImage = album.coverImage;
   if (!coverImage) {
-    const firstImage = await Image.findOne({ album: album._id }).sort({ createdAt: 1 });
+    const firstImage = await Image.findOne({ album: album._id, isDeleted: { $ne: true } }).sort({ createdAt: 1 });
     if (firstImage) {
       coverImage = firstImage.url;
     }
@@ -84,7 +84,7 @@ const getAlbumById = wrapAsync(async (req, res) => {
 
 /**
  * DELETE /api/albums/:id
- * Deletes an album by its ID.
+ * Soft deletes an album by its ID.
  */
 const deleteAlbum = wrapAsync(async (req, res) => {
   const album = await Album.findById(req.params.id);
@@ -97,14 +97,61 @@ const deleteAlbum = wrapAsync(async (req, res) => {
     throw new AppError('You can only delete your own albums', 403);
   }
 
-  // Nullify album reference on images that belonged to it
+  // Perform soft delete (do not nullify images here, wait until permanent delete)
+  album.isDeleted = true;
+  album.deletedAt = new Date();
+  await album.save();
+
+  console.log(`🗑️ Album soft-deleted: ${req.params.id}`);
+  res.status(200).json({ message: 'Album soft-deleted successfully!', albumId: req.params.id });
+});
+
+/**
+ * POST /api/albums/:id/restore
+ * Restores a soft-deleted album by its ID.
+ */
+const restoreAlbum = wrapAsync(async (req, res) => {
+  const album = await Album.findById(req.params.id);
+  if (!album) {
+    throw new AppError('Album not found.', 404);
+  }
+
+  // Check authorization: verify creator ownership
+  if (!album.createdBy || album.createdBy.toString() !== req.user.id) {
+    throw new AppError('You can only restore your own albums', 403);
+  }
+
+  album.isDeleted = false;
+  album.deletedAt = null;
+  await album.save();
+
+  console.log(`🔄 Album restored: ${album.name}`);
+  res.status(200).json({ message: 'Album restored successfully!', album });
+});
+
+/**
+ * DELETE /api/albums/:id/permanent
+ * Permanently deletes an album and nulls out referencing images.
+ */
+const permanentDeleteAlbum = wrapAsync(async (req, res) => {
+  const album = await Album.findById(req.params.id);
+  if (!album) {
+    throw new AppError('Album not found.', 404);
+  }
+
+  // Check authorization: verify creator ownership
+  if (!album.createdBy || album.createdBy.toString() !== req.user.id) {
+    throw new AppError('You can only permanently delete your own albums', 403);
+  }
+
+  // Nullify album reference on images that belonged to it (soft-deleted or not)
   await Image.updateMany({ album: album._id }, { album: null });
 
   // Delete the album itself
   await Album.findByIdAndDelete(req.params.id);
 
-  console.log(`🗑️ Album deleted: ${req.params.id}`);
-  res.status(200).json({ message: 'Album deleted successfully!', albumId: req.params.id });
+  console.log(`🗑️ Album permanently deleted: ${req.params.id}`);
+  res.status(200).json({ message: 'Album permanently deleted successfully!', albumId: req.params.id });
 });
 
 module.exports = {
@@ -112,4 +159,6 @@ module.exports = {
   getAlbums,
   getAlbumById,
   deleteAlbum,
+  restoreAlbum,
+  permanentDeleteAlbum,
 };

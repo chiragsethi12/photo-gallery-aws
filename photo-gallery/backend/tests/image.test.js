@@ -144,10 +144,11 @@ describe('Image Endpoints', () => {
       .set('Authorization', `Bearer ${tokenA}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.message).toMatch(/deleted successfully/i);
+    expect(res.body.message).toMatch(/soft-deleted successfully/i);
 
-    // Verify it is deleted in the database
+    // Verify it is soft-deleted in the database
     const inDb = await Image.findById(img._id);
-    expect(inDb).toBeNull();
+    expect(inDb).toBeTruthy();
+    expect(inDb.isDeleted).toBe(true);
   });
 });

@@ -14,6 +14,7 @@ const albumRoutes = require('./routes/albumRoutes');
 const authRoutes = require('./routes/authRoutes');
 const { errorHandler, wrapAsync } = require('./middleware/errorHandler');
 const cloudinary = require('./config/cloudinaryConfig');
+const { initTrashCleanupJob } = require('./jobs/trashCleanup');
 
 // Connect to Database
 connectDB();
@@ -107,6 +108,8 @@ app.use(errorHandler);
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`✅ Server running on http://localhost:${PORT}`);
+    // Start automated daily trash cleanup job
+    initTrashCleanupJob();
   });
 }
 
