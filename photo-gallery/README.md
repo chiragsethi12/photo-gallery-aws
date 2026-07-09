@@ -94,7 +94,16 @@ CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
-#### 2. Build and Run Stack
+#### 2. Configure API Endpoint for Production
+By default, the React frontend points to `http://localhost:5000` for local development. When deploying to a remote host, you **must** configure the API base URL at build time so the React bundle is compiled with the correct backend URL.
+
+To do this, add `REACT_APP_API_URL` to your root `.env` file before building the containers:
+```env
+REACT_APP_API_URL=https://your-backend-domain.com
+```
+*(Note: This URL must be reachable from the browser client, not just within the internal Docker network, since React runs client-side in the user's browser).*
+
+#### 3. Build and Run Stack
 Run the startup command from the project root:
 
 ```bash
@@ -104,7 +113,7 @@ docker compose up --build
 - **React Frontend (Nginx)** is available at: [http://localhost:3000](http://localhost:3000)
 - **Express Backend API** is available at: [http://localhost:5000](http://localhost:5000)
 
-#### 3. Stop Containers
+#### 4. Stop Containers
 ```bash
 docker compose down
 ```

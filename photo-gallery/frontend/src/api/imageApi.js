@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Base URL of the Express backend
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
 
 // Interceptor to inject JWT token into header for protected API endpoints
 axios.interceptors.request.use(

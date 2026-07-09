@@ -87,10 +87,22 @@ const getAlbumById = wrapAsync(async (req, res) => {
  * Deletes an album by its ID.
  */
 const deleteAlbum = wrapAsync(async (req, res) => {
-  const album = await Album.findByIdAndDelete(req.params.id);
+  const album = await Album.findById(req.params.id);
   if (!album) {
     throw new AppError('Album not found.', 404);
   }
+
+  // Check authorization: verify creator ownership
+  if (!album.createdBy || album.createdBy.toString() !== req.user.id) {
+    throw new AppError('You can only delete your own albums', 403);
+  }
+
+  // Nullify album reference on images that belonged to it
+  await Image.updateMany({ album: album._id }, { album: null });
+
+  // Delete the album itself
+  await Album.findByIdAndDelete(req.params.id);
+
   console.log(`🗑️ Album deleted: ${req.params.id}`);
   res.status(200).json({ message: 'Album deleted successfully!', albumId: req.params.id });
 });

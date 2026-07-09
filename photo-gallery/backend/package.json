@@ -1,7 +1,7 @@
 {
   "name": "photo-gallery-backend",
   "version": "1.0.0",
-  "description": "Backend for Photo Gallery with AWS S3",
+  "description": "Backend for Photo Gallery with Cloudinary, MongoDB, and JWT",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

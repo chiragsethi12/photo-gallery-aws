@@ -69,7 +69,7 @@ const ImageCard = ({
   const handleDownload = (e) => {
     e.stopPropagation();
     const link = document.createElement('a');
-    link.href = image.url;
+    link.href = getDownloadUrl(image.url);
     link.download = image.title || filename;
     link.target = '_blank';
     document.body.appendChild(link);
@@ -82,6 +82,15 @@ const ImageCard = ({
     if (!url) return '';
     if (url.includes('cloudinary.com') && url.includes('/upload/')) {
       return url.replace('/upload/', '/upload/w_400,q_auto,f_auto/');
+    }
+    return url;
+  };
+
+  // Helper to generate a download URL that forces Cloudinary attachment download
+  const getDownloadUrl = (url) => {
+    if (!url) return '';
+    if (url.includes('cloudinary.com') && url.includes('/upload/')) {
+      return url.replace('/upload/', '/upload/fl_attachment/');
     }
     return url;
   };

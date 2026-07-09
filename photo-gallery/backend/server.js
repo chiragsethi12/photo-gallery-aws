@@ -6,12 +6,14 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const mongoose = require('mongoose');
 
 const connectDB = require('./config/db');
 const imageRoutes = require('./routes/imageRoutes');
 const albumRoutes = require('./routes/albumRoutes');
 const authRoutes = require('./routes/authRoutes');
-const { errorHandler } = require('./middleware/errorHandler');
+const { errorHandler, wrapAsync } = require('./middleware/errorHandler');
+const cloudinary = require('./config/cloudinaryConfig');
 
 // Connect to Database
 connectDB();
@@ -63,6 +65,35 @@ app.use(express.json());
 app.use('/api', imageRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api/auth', authRoutes);
+
+// Health-check ready route
+app.get('/health/ready', wrapAsync(async (req, res) => {
+  const mongoHealthy = mongoose.connection.readyState === 1;
+  let cloudinaryHealthy = false;
+
+  try {
+    if (cloudinary && cloudinary.api) {
+      if (typeof cloudinary.api.ping === 'function') {
+        await cloudinary.api.ping();
+        cloudinaryHealthy = true;
+      } else if (typeof cloudinary.api.resources === 'function') {
+        await cloudinary.api.resources({ max_results: 1 });
+        cloudinaryHealthy = true;
+      }
+    }
+  } catch (err) {
+    console.error('Cloudinary health check failed:', err.message);
+    cloudinaryHealthy = false;
+  }
+
+  const isHealthy = mongoHealthy && cloudinaryHealthy;
+  const status = isHealthy ? 200 : 503;
+  res.status(status).json({
+    status: isHealthy ? 'ok' : 'error',
+    mongo: mongoHealthy,
+    cloudinary: cloudinaryHealthy,
+  });
+}));
 
 // Health-check route
 app.get('/', (req, res) => {

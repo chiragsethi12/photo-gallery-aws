@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 // Base URL of the Express backend auth endpoints
-const AUTH_API = 'http://localhost:5000/api/auth';
+const AUTH_API = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth`;
 
 export const AuthContext = createContext();
 

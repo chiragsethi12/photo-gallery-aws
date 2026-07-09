@@ -13,6 +13,9 @@ RUN npm ci
 # Copy frontend source files
 COPY . .
 
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 # Compile optimized static bundle
 RUN npm run build
 

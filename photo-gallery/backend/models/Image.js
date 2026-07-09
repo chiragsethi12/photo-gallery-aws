@@ -51,4 +51,9 @@ const ImageSchema = new mongoose.Schema({
   },
 });
 
+ImageSchema.index({ uploadedBy: 1 });
+ImageSchema.index({ album: 1 });
+ImageSchema.index({ tags: 1 });
+ImageSchema.index({ title: 'text', tags: 'text' });
+
 module.exports = mongoose.model('Image', ImageSchema);
