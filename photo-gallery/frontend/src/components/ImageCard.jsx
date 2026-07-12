@@ -20,14 +20,18 @@ const ImageCard = ({
   currentUser,
   toggleFavorite,
   onTagClick,
+  activeAlbumRole = null,
 }) => {
   const [loaded, setLoaded]       = useState(false);
   const [imgError, setImgError]   = useState(false);
   const [confirming, setConfirming] = useState(false);
 
-  const isOwner = image.uploadedBy && currentUser && (
-    image.uploadedBy === currentUser.id || 
-    (image.uploadedBy._id && image.uploadedBy._id === currentUser.id)
+  const canDelete = currentUser && (
+    (
+      (image.uploadedBy && (image.uploadedBy === currentUser.id || (image.uploadedBy._id && image.uploadedBy._id === currentUser.id))) ||
+      activeAlbumRole === 'owner'
+    ) &&
+    activeAlbumRole !== 'viewer'
   );
 
   const isFavorited = image.favoritedBy && currentUser && (
@@ -161,8 +165,8 @@ const ImageCard = ({
               </svg>
             </button>
 
-            {/* Delete button (Owner only) */}
-            {isOwner && (
+            {/* Delete button */}
+            {canDelete && (
               !confirming ? (
                 <button
                   onClick={handleDeleteClick}

@@ -44,6 +44,7 @@ const Gallery = ({
   onClearTagFilter,
   onTagClick,
   albums = [],
+  activeAlbumRole = null,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
 
@@ -203,6 +204,7 @@ const Gallery = ({
             currentUser={currentUser}
             toggleFavorite={toggleFavorite}
             onTagClick={onTagClick}
+            activeAlbumRole={activeAlbumRole}
           />
         ))}
       </div>

@@ -9,16 +9,20 @@ const {
   deleteAlbum,
   restoreAlbum,
   permanentDeleteAlbum,
+  addCollaborator,
+  removeCollaborator,
+  updateCollaboratorRole,
 } = require('../controllers/albumController');
+const { requireAlbumRole } = require('../middleware/albumAccess');
 
 // POST /api/albums - Create a new album (Protected)
 router.post('/', protect, createAlbum);
 
-// GET /api/albums - Get all albums (Public)
-router.get('/', getAlbums);
+// GET /api/albums - Get all albums (Protected)
+router.get('/', protect, getAlbums);
 
-// GET /api/albums/:id - Get a single album by ID (Public)
-router.get('/:id', getAlbumById);
+// GET /api/albums/:id - Get a single album by ID (Protected - Viewer access required)
+router.get('/:id', protect, requireAlbumRole('viewer', 'id'), getAlbumById);
 
 // DELETE /api/albums/:id - Delete an album by ID (Protected) (soft-delete)
 router.delete('/:id', protect, deleteAlbum);
@@ -28,5 +32,14 @@ router.post('/:id/restore', protect, restoreAlbum);
 
 // DELETE /api/albums/:id/permanent - Permanently delete an album (Protected)
 router.delete('/:id/permanent', protect, permanentDeleteAlbum);
+
+// POST /api/albums/:id/collaborators - Add collaborator (Protected - Owner only)
+router.post('/:id/collaborators', protect, addCollaborator);
+
+// DELETE /api/albums/:id/collaborators/:userId - Remove collaborator (Protected - Owner only)
+router.delete('/:id/collaborators/:userId', protect, removeCollaborator);
+
+// PATCH /api/albums/:id/collaborators/:userId - Update collaborator role (Protected - Owner only)
+router.patch('/:id/collaborators/:userId', protect, updateCollaboratorRole);
 
 module.exports = router;

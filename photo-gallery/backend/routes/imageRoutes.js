@@ -14,21 +14,40 @@ const {
 } = require('../controllers/imageController');
 const { getTrashItems } = require('../controllers/trashController');
 const { uploadValidation } = require('../middleware/validation');
+const { requireAlbumRole } = require('../middleware/albumAccess');
 
 /**
  * POST /api/upload
  * Accepts a single file field named "image".
  * Only accessible to authenticated users.
  */
-router.post('/upload', protect, upload.single('image'), uploadValidation, (req, res, next) => {
-  uploadImage(req, res, next);
-});
+router.post(
+  '/upload',
+  protect,
+  upload.single('image'),
+  uploadValidation,
+  requireAlbumRole('contributor', 'body'),
+  (req, res, next) => {
+    uploadImage(req, res, next);
+  }
+);
 
 /**
  * GET /api/images
- * Returns a JSON array/object of all images (Public).
+ * Returns a JSON array/object of all images. Enforces authorization when filtering by album.
  */
-router.get('/images', getImages);
+router.get('/images', (req, res, next) => {
+  if (req.query.album) {
+    return protect(req, res, (err) => {
+      if (err) return next(err);
+      requireAlbumRole('viewer', 'query')(req, res, (err2) => {
+        if (err2) return next(err2);
+        getImages(req, res, next);
+      });
+    });
+  }
+  return getImages(req, res, next);
+});
 
 /**
  * GET /api/trash

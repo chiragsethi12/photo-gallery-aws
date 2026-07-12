@@ -10,7 +10,7 @@ import { createAlbum } from '../api/imageApi';
  *   onSelectAlbum - (albumId) => void
  *   onRefreshAlbums - () => void
  */
-const AlbumsView = ({ albums, loading, onSelectAlbum, onRefreshAlbums }) => {
+const AlbumsView = ({ albums, loading, albumScope, onSelectAlbum, onRefreshAlbums }) => {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -69,6 +69,23 @@ const AlbumsView = ({ albums, loading, onSelectAlbum, onRefreshAlbums }) => {
           </svg>
           New Album
         </button>
+      </div>
+
+      {/* Scope Filter Tabs */}
+      <div className="flex gap-2 border-b border-white/5 pb-3">
+        {['all', 'mine', 'shared'].map((scope) => (
+          <button
+            key={scope}
+            onClick={() => onRefreshAlbums(scope)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
+              albumScope === scope
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {scope === 'all' ? 'All' : scope === 'mine' ? 'My Albums' : 'Shared With Me'}
+          </button>
+        ))}
       </div>
 
       {albums.length === 0 ? (

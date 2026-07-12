@@ -3,6 +3,7 @@ const cloudinary = require('../config/cloudinaryConfig');
 const streamifier = require('streamifier');
 const mongoose = require('mongoose');
 const Image = require('../models/Image');
+const Album = require('../models/Album');
 const { AppError, wrapAsync } = require('../middleware/errorHandler');
 
 // ─── Upload Image ─────────────────────────────────────────────────────────────
@@ -154,8 +155,18 @@ const deleteImage = wrapAsync(async (req, res) => {
     throw new AppError('Image not found in database.', 404);
   }
 
-  // Check if current user is the owner
-  if (imageDoc.uploadedBy && imageDoc.uploadedBy.toString() !== req.user.id) {
+  // Check if current user is the owner of the image OR owner of the album containing the image
+  let isAuthorized = false;
+  if (imageDoc.uploadedBy && imageDoc.uploadedBy.toString() === req.user.id) {
+    isAuthorized = true;
+  } else if (imageDoc.album) {
+    const album = await Album.findById(imageDoc.album);
+    if (album && album.createdBy && album.createdBy.toString() === req.user.id) {
+      isAuthorized = true;
+    }
+  }
+
+  if (!isAuthorized) {
     throw new AppError('You can only delete your own images', 403);
   }
 
@@ -224,8 +235,18 @@ const permanentDeleteImage = wrapAsync(async (req, res) => {
     throw new AppError('Image not found.', 404);
   }
 
-  // Check ownership
-  if (imageDoc.uploadedBy && imageDoc.uploadedBy.toString() !== req.user.id) {
+  // Check ownership of the image OR owner of the album containing the image
+  let isAuthorized = false;
+  if (imageDoc.uploadedBy && imageDoc.uploadedBy.toString() === req.user.id) {
+    isAuthorized = true;
+  } else if (imageDoc.album) {
+    const album = await Album.findById(imageDoc.album);
+    if (album && album.createdBy && album.createdBy.toString() === req.user.id) {
+      isAuthorized = true;
+    }
+  }
+
+  if (!isAuthorized) {
     throw new AppError('You can only permanently delete your own images', 403);
   }
 

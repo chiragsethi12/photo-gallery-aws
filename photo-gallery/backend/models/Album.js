@@ -32,6 +32,26 @@ const AlbumSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  collaborators: [
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      role: {
+        type: String,
+        enum: ['viewer', 'contributor'],
+        required: true,
+      },
+      addedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
 });
+
+AlbumSchema.index({ 'collaborators.user': 1 });
 
 module.exports = mongoose.model('Album', AlbumSchema);

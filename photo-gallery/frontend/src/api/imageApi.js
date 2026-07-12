@@ -161,10 +161,11 @@ export const toggleFavoriteImage = async (id) => {
 
 /**
  * Fetch all albums.
+ * @param {string} scope - Scoped view filtering: 'mine', 'shared', or 'all'.
  * @returns {Promise<Array>} List of albums enriched with cover images and image counts.
  */
-export const fetchAlbums = async () => {
-  const response = await axios.get(`${API_BASE}/albums`);
+export const fetchAlbums = async (scope = 'all') => {
+  const response = await axios.get(`${API_BASE}/albums`, { params: { scope } });
   return response.data;
 };
 
@@ -175,6 +176,14 @@ export const fetchAlbums = async () => {
  */
 export const createAlbum = async (albumData) => {
   const response = await axios.post(`${API_BASE}/albums`, albumData);
+  return response.data;
+};
+
+/**
+ * Fetch a single album by ID.
+ */
+export const fetchAlbumById = async (id) => {
+  const response = await axios.get(`${API_BASE}/albums/${id}`);
   return response.data;
 };
 
@@ -231,5 +240,29 @@ export const permanentlyDeleteImage = async (id) => {
  */
 export const permanentlyDeleteAlbum = async (id) => {
   const response = await axios.delete(`${API_BASE}/albums/${id}/permanent`);
+  return response.data;
+};
+
+/**
+ * Add a collaborator to an album.
+ */
+export const addCollaborator = async (albumId, email, role) => {
+  const response = await axios.post(`${API_BASE}/albums/${albumId}/collaborators`, { email, role });
+  return response.data;
+};
+
+/**
+ * Remove a collaborator from an album.
+ */
+export const removeCollaborator = async (albumId, userId) => {
+  const response = await axios.delete(`${API_BASE}/albums/${albumId}/collaborators/${userId}`);
+  return response.data;
+};
+
+/**
+ * Update role of an album collaborator.
+ */
+export const updateCollaborator = async (albumId, userId, role) => {
+  const response = await axios.patch(`${API_BASE}/albums/${albumId}/collaborators/${userId}`, { role });
   return response.data;
 };

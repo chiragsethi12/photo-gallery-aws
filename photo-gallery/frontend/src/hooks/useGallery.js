@@ -33,6 +33,7 @@ const useGallery = () => {
   // ── Album States ───────────────────────────────────────────────────────────
   const [albums, setAlbums]             = useState([]);
   const [albumsLoading, setAlbumsLoading] = useState(false);
+  const [albumScope, setAlbumScope]     = useState('all');
 
   // ── Trash States ───────────────────────────────────────────────────────────
   const [trashImages, setTrashImages] = useState([]);
@@ -67,17 +68,18 @@ const useGallery = () => {
   }, [loadImages]);
 
   // ── Fetch Albums ──────────────────────────────────────────────────────────
-  const loadAlbums = useCallback(async () => {
+  const loadAlbums = useCallback(async (scope = albumScope) => {
+    setAlbumScope(scope);
     setAlbumsLoading(true);
     try {
-      const data = await apiFetchAlbums();
+      const data = await apiFetchAlbums(scope);
       setAlbums(data || []);
     } catch (err) {
       console.error('Failed to load albums:', err);
     } finally {
       setAlbumsLoading(false);
     }
-  }, []);
+  }, [albumScope]);
 
   // ── Filter Helpers ────────────────────────────────────────────────────────
   const filterByAlbum = useCallback((albumId) => {
@@ -232,6 +234,7 @@ const useGallery = () => {
     searchQuery,
     albums,
     albumsLoading,
+    albumScope,
     trashImages,
     trashAlbums,
     trashLoading,
