@@ -266,3 +266,36 @@ export const updateCollaborator = async (albumId, userId, role) => {
   const response = await axios.patch(`${API_BASE}/albums/${albumId}/collaborators/${userId}`, { role });
   return response.data;
 };
+
+/**
+ * Create a public shareable link.
+ */
+export const createShareLink = async (resourceType, resourceId, expiresInDays, password) => {
+  const response = await axios.post(`${API_BASE}/share`, {
+    resourceType,
+    resourceId,
+    expiresInDays: expiresInDays ? parseFloat(expiresInDays) : null,
+    password: password || null,
+  });
+  return response.data;
+};
+
+/**
+ * Fetch details of a shared resource using public token.
+ */
+export const fetchSharedResource = async (token, password) => {
+  const params = {};
+  if (password) {
+    params.password = password;
+  }
+  const response = await axios.get(`${API_BASE}/share/${token}`, { params });
+  return response.data;
+};
+
+/**
+ * Revoke a public shareable link.
+ */
+export const revokeShareLink = async (token) => {
+  const response = await axios.delete(`${API_BASE}/share/${token}`);
+  return response.data;
+};

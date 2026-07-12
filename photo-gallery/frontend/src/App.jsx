@@ -12,6 +12,12 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { fetchAlbumById } from './api/imageApi';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
+import PublicShareView from './components/PublicShareView';
+
+const getSharedTokenFromUrl = () => {
+  const match = window.location.pathname.match(/\/share\/([a-f0-9]+)/i);
+  return match ? match[1] : null;
+};
 
 function MainApp() {
   const { user, logout } = useContext(AuthContext);
@@ -89,6 +95,12 @@ function MainApp() {
       console.error('Failed to refresh album details:', err);
     }
   };
+
+  const sharedToken = getSharedTokenFromUrl();
+
+  if (sharedToken) {
+    return <PublicShareView token={sharedToken} />;
+  }
 
   // Show authentication screen if not logged in
   if (!user) {
@@ -182,6 +194,7 @@ function MainApp() {
                 albumScope={albumScope}
                 onSelectAlbum={handleSelectAlbum}
                 onRefreshAlbums={loadAlbums}
+                currentUser={user}
               />
             ) : viewMode === 'sessions' ? (
               <SessionsPanel />

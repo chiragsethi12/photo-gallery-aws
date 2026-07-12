@@ -12,6 +12,7 @@ const connectDB = require('./config/db');
 const imageRoutes = require('./routes/imageRoutes');
 const albumRoutes = require('./routes/albumRoutes');
 const authRoutes = require('./routes/authRoutes');
+const shareRoutes = require('./routes/shareRoutes');
 const { errorHandler, wrapAsync } = require('./middleware/errorHandler');
 const cloudinary = require('./config/cloudinaryConfig');
 const { initTrashCleanupJob } = require('./jobs/trashCleanup');
@@ -66,6 +67,11 @@ app.use(express.json());
 app.use('/api', imageRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api/auth', authRoutes);
+
+// Shareable links router mounted at /api/share.
+// Note: The resolveShareLink route (GET /api/share/:token) bypasses global protect middleware
+// to serve read-only resource details to unauthenticated users.
+app.use('/api/share', shareRoutes);
 
 // Health-check ready route
 app.get('/health/ready', wrapAsync(async (req, res) => {

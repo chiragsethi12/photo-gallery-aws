@@ -21,6 +21,7 @@ const ImageCard = ({
   toggleFavorite,
   onTagClick,
   activeAlbumRole = null,
+  onShare = null,
 }) => {
   const [loaded, setLoaded]       = useState(false);
   const [imgError, setImgError]   = useState(false);
@@ -154,6 +155,22 @@ const ImageCard = ({
 
           {/* Action Row */}
           <div className="flex items-center gap-1.5">
+            {/* Share button */}
+            {currentUser && onShare && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShare(image._id);
+                }}
+                className="flex items-center justify-center w-8 h-8 rounded-xl bg-black/60 border border-white/5 backdrop-blur-sm text-white hover:text-indigo-400 transition-all duration-200"
+                title="Share photo"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M8.684 10.742L12 9.382l3.316 1.36m-6.632 2.68L12 14.618l3.316-1.36m-6.632-4.14a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5zm6.632 0a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5zM12 3v3m0 12v3" />
+                </svg>
+              </button>
+            )}
+
             {/* Download button */}
             <button
               onClick={handleDownload}

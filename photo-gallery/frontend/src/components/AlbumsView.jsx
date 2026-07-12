@@ -1,5 +1,6 @@
 // src/components/AlbumsView.jsx - Album gallery layout and album creation controls
 import React, { useState } from 'react';
+import ShareModal from './ShareModal';
 import { createAlbum } from '../api/imageApi';
 
 /**
@@ -10,8 +11,11 @@ import { createAlbum } from '../api/imageApi';
  *   onSelectAlbum - (albumId) => void
  *   onRefreshAlbums - () => void
  */
-const AlbumsView = ({ albums, loading, albumScope, onSelectAlbum, onRefreshAlbums }) => {
+const AlbumsView = ({ albums, loading, albumScope, onSelectAlbum, onRefreshAlbums, currentUser }) => {
   const [showModal, setShowModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareResourceId, setShareResourceId] = useState(null);
+  const [shareResourceType, setShareResourceType] = useState('album');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
@@ -108,14 +112,41 @@ const AlbumsView = ({ albums, loading, albumScope, onSelectAlbum, onRefreshAlbum
           </button>
         </div>
       ) : (
-        /* Albums Grid */
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {albums.map((album) => (
-            <div
-              key={album._id}
-              onClick={() => onSelectAlbum(album._id)}
-              className="group cursor-pointer aspect-[4/3] rounded-2xl overflow-hidden glass border border-white/5 relative flex flex-col justify-end p-4 shadow-xl hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1"
-            >
+          {albums.map((album) => {
+            const isOwner = album.createdBy && currentUser && (
+              album.createdBy === currentUser.id ||
+              (album.createdBy._id && album.createdBy._id === currentUser.id)
+            );
+            const collabRecord = album.collaborators?.find(
+              (c) => (c.user?._id || c.user) === currentUser?.id
+            );
+            const isContributor = collabRecord?.role === 'contributor';
+            const canShare = isOwner || isContributor;
+
+            return (
+              <div
+                key={album._id}
+                onClick={() => onSelectAlbum(album._id)}
+                className="group cursor-pointer aspect-[4/3] rounded-2xl overflow-hidden glass border border-white/5 relative flex flex-col justify-end p-4 shadow-xl hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1"
+              >
+                {/* Share button */}
+                {canShare && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShareResourceId(album._id);
+                      setShareResourceType('album');
+                      setShowShareModal(true);
+                    }}
+                    className="absolute top-3 right-3 z-20 w-8 h-8 rounded-xl bg-black/60 border border-white/5 backdrop-blur-sm opacity-0 group-hover:opacity-100 text-white hover:text-indigo-400 flex items-center justify-center transition-all duration-200"
+                    title="Share Album"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path d="M8.684 10.742L12 9.382l3.316 1.36m-6.632 2.68L12 14.618l3.316-1.36m-6.632-4.14a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5zm6.632 0a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5zM12 3v3m0 12v3" />
+                    </svg>
+                  </button>
+                )}
               {/* Cover Image */}
               <div className="absolute inset-0 bg-dark-950 overflow-hidden">
                 {album.coverImage ? (
@@ -152,7 +183,7 @@ const AlbumsView = ({ albums, loading, albumScope, onSelectAlbum, onRefreshAlbum
                 </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -239,6 +270,16 @@ const AlbumsView = ({ albums, loading, albumScope, onSelectAlbum, onRefreshAlbum
             </form>
           </div>
         </div>
+      )}
+      {showShareModal && (
+        <ShareModal
+          resourceType={shareResourceType}
+          resourceId={shareResourceId}
+          onClose={() => {
+            setShowShareModal(false);
+            setShareResourceId(null);
+          }}
+        />
       )}
     </div>
   );

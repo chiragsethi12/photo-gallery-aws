@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import ImageCard from './ImageCard';
 import Lightbox from './Lightbox';
+import ShareModal from './ShareModal';
 
 /**
  * Gallery
@@ -47,6 +48,13 @@ const Gallery = ({
   activeAlbumRole = null,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareResourceId, setShareResourceId] = useState(null);
+
+  const handleShareImage = (imageId) => {
+    setShareResourceId(imageId);
+    setShowShareModal(true);
+  };
 
   // ── Lightbox Navigation ──────────────────────────────────────────────────
   const handleNavigateLightbox = (direction) => {
@@ -205,6 +213,7 @@ const Gallery = ({
             toggleFavorite={toggleFavorite}
             onTagClick={onTagClick}
             activeAlbumRole={activeAlbumRole}
+            onShare={handleShareImage}
           />
         ))}
       </div>
@@ -239,6 +248,17 @@ const Gallery = ({
           selectedIndex={selectedIndex}
           onClose={() => setSelectedIndex(null)}
           onNavigate={handleNavigateLightbox}
+        />
+      )}
+
+      {showShareModal && (
+        <ShareModal
+          resourceType="image"
+          resourceId={shareResourceId}
+          onClose={() => {
+            setShowShareModal(false);
+            setShareResourceId(null);
+          }}
         />
       )}
     </section>
