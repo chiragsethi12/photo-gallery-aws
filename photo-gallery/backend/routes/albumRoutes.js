@@ -12,6 +12,7 @@ const {
   addCollaborator,
   removeCollaborator,
   updateCollaboratorRole,
+  getAlbumActivity,
 } = require('../controllers/albumController');
 const { requireAlbumRole } = require('../middleware/albumAccess');
 
@@ -41,5 +42,8 @@ router.delete('/:id/collaborators/:userId', protect, removeCollaborator);
 
 // PATCH /api/albums/:id/collaborators/:userId - Update collaborator role (Protected - Owner only)
 router.patch('/:id/collaborators/:userId', protect, updateCollaboratorRole);
+
+// GET /api/albums/:id/activity - Get paginated activities (Protected - Viewer access required)
+router.get('/:id/activity', protect, requireAlbumRole('viewer', 'id'), getAlbumActivity);
 
 module.exports = router;

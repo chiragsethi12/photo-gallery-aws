@@ -4,6 +4,7 @@ const streamifier = require('streamifier');
 const mongoose = require('mongoose');
 const Image = require('../models/Image');
 const Album = require('../models/Album');
+const logActivity = require('../utils/logActivity');
 const { AppError, wrapAsync } = require('../middleware/errorHandler');
 
 // ─── Upload Image ─────────────────────────────────────────────────────────────
@@ -78,6 +79,10 @@ const uploadImage = wrapAsync(async (req, res) => {
 
   const savedImage = await image.save();
   console.log(`💾 Saved metadata to MongoDB: ${savedImage._id}`);
+
+  if (albumId) {
+    logActivity(albumId, req.user.id, 'upload', { count: 1 });
+  }
 
   res.status(200).json(savedImage);
 });
@@ -174,6 +179,13 @@ const deleteImage = wrapAsync(async (req, res) => {
   imageDoc.isDeleted = true;
   imageDoc.deletedAt = new Date();
   await imageDoc.save();
+
+  if (imageDoc.album) {
+    logActivity(imageDoc.album, req.user.id, 'image_deleted', {
+      imageId: imageDoc._id,
+      imageTitle: imageDoc.title,
+    });
+  }
 
   console.log(`🗑️ Image soft-deleted: ${publicId}`);
   res.status(200).json({ message: 'Image soft-deleted successfully!', publicId });

@@ -299,3 +299,39 @@ export const revokeShareLink = async (token) => {
   const response = await axios.delete(`${API_BASE}/share/${token}`);
   return response.data;
 };
+
+/**
+ * Fetch paginated comments for an image.
+ */
+export const fetchComments = async (imageId, page = 1, limit = 10) => {
+  const response = await axios.get(`${API_BASE}/image/${imageId}/comments`, {
+    params: { page, limit },
+  });
+  return response.data;
+};
+
+/**
+ * Add a new comment to an image.
+ */
+export const addComment = async (imageId, text) => {
+  const response = await axios.post(`${API_BASE}/image/${imageId}/comments`, { text });
+  return response.data;
+};
+
+/**
+ * Delete a comment.
+ */
+export const deleteComment = async (commentId) => {
+  const response = await axios.delete(`${API_BASE}/comments/${commentId}`);
+  return response.data;
+};
+
+/**
+ * Fetch paginated album activities.
+ */
+export const fetchAlbumActivity = async (albumId, page = 1, limit = 10) => {
+  const response = await axios.get(`${API_BASE}/albums/${albumId}/activity`, {
+    params: { page, limit },
+  });
+  return response.data;
+};

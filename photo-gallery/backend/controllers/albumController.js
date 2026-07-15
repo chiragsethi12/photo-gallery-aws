@@ -2,6 +2,8 @@
 const Album = require('../models/Album');
 const Image = require('../models/Image');
 const User = require('../models/User');
+const Activity = require('../models/Activity');
+const logActivity = require('../utils/logActivity');
 const { AppError, wrapAsync } = require('../middleware/errorHandler');
 
 /**
@@ -224,6 +226,13 @@ const addCollaborator = wrapAsync(async (req, res) => {
   album.collaborators.push({ user: user._id, role });
   await album.save();
 
+  // Log collaborator added activity
+  logActivity(album._id, req.user.id, 'collaborator_added', {
+    addedUserId: user._id,
+    addedUserName: user.name,
+    role: role,
+  });
+
   // Populate user details for response
   const populated = await Album.findById(album._id).populate('collaborators.user', 'name email');
 
@@ -251,11 +260,21 @@ const removeCollaborator = wrapAsync(async (req, res) => {
 
   const { userId } = req.params;
 
+  // Load removed user details for activity metadata
+  const removedUser = await User.findById(userId);
+  const removedUserName = removedUser ? removedUser.name : 'Unknown User';
+
   album.collaborators = album.collaborators.filter(
     (c) => c.user && c.user.toString() !== userId
   );
 
   await album.save();
+
+  // Log collaborator removed activity
+  logActivity(album._id, req.user.id, 'collaborator_removed', {
+    removedUserId: userId,
+    removedUserName: removedUserName,
+  });
 
   const populated = await Album.findById(album._id).populate('collaborators.user', 'name email');
 
@@ -308,6 +327,31 @@ const updateCollaboratorRole = wrapAsync(async (req, res) => {
   });
 });
 
+/**
+ * GET /api/albums/:id/activity
+ * Retrieves paginated activity events for an album, newest-first.
+ */
+const getAlbumActivity = wrapAsync(async (req, res) => {
+  const albumId = req.params.id;
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+
+  const totalActivities = await Activity.countDocuments({ album: albumId });
+  const activities = await Activity.find({ album: albumId })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate('actor', 'name');
+
+  res.status(200).json({
+    activities,
+    totalPages: Math.ceil(totalActivities / limit),
+    currentPage: page,
+    totalActivities,
+  });
+});
+
 module.exports = {
   createAlbum,
   getAlbums,
@@ -318,4 +362,5 @@ module.exports = {
   addCollaborator,
   removeCollaborator,
   updateCollaboratorRole,
+  getAlbumActivity,
 };

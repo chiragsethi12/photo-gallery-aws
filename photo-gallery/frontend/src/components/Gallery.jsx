@@ -248,6 +248,8 @@ const Gallery = ({
           selectedIndex={selectedIndex}
           onClose={() => setSelectedIndex(null)}
           onNavigate={handleNavigateLightbox}
+          currentUser={currentUser}
+          activeAlbumRole={activeAlbumRole}
         />
       )}
 

@@ -7,6 +7,7 @@ import AlbumsView from './components/AlbumsView';
 import SessionsPanel from './components/SessionsPanel';
 import TrashView from './components/TrashView';
 import CollaboratorPanel from './components/CollaboratorPanel';
+import ActivityFeed from './components/ActivityFeed';
 import useGallery from './hooks/useGallery';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { fetchAlbumById } from './api/imageApi';
@@ -25,6 +26,7 @@ function MainApp() {
   const [viewMode, setViewMode] = useState('photos'); // 'photos' or 'albums'
   const [activeAlbumDetails, setActiveAlbumDetails] = useState(null);
   const [showCollaborators, setShowCollaborators] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   // Extract all states and actions from the centralized hook
   const { 
@@ -71,6 +73,7 @@ function MainApp() {
     filterByAlbum(albumId);
     setViewMode('photos');
     setShowCollaborators(false);
+    setShowActivity(false);
     try {
       const details = await fetchAlbumById(albumId);
       setActiveAlbumDetails(details);
@@ -84,6 +87,7 @@ function MainApp() {
     filterByAlbum('');
     setActiveAlbumDetails(null);
     setShowCollaborators(false);
+    setShowActivity(false);
   };
 
   const refreshActiveAlbum = async () => {
@@ -227,17 +231,35 @@ function MainApp() {
                       </span>
                     </div>
 
-                    {activeAlbumDetails.role === 'owner' && (
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setShowCollaborators(!showCollaborators)}
+                        onClick={() => {
+                          setShowActivity(!showActivity);
+                          setShowCollaborators(false);
+                        }}
                         className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-slate-200 transition-all flex items-center gap-1.5"
                       >
-                        <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        {showCollaborators ? 'Hide Collaborators' : 'Manage Collaborators'}
+                        {showActivity ? 'Hide Activity' : 'Activity Feed'}
                       </button>
-                    )}
+
+                      {activeAlbumDetails.role === 'owner' && (
+                        <button
+                          onClick={() => {
+                            setShowCollaborators(!showCollaborators);
+                            setShowActivity(false);
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-slate-200 transition-all flex items-center gap-1.5"
+                        >
+                          <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          </svg>
+                          {showCollaborators ? 'Hide Collaborators' : 'Manage Collaborators'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -247,6 +269,10 @@ function MainApp() {
                     collaborators={activeAlbumDetails.collaborators || []}
                     onRefreshAlbum={refreshActiveAlbum}
                   />
+                )}
+
+                {showActivity && activeAlbumDetails && (
+                  <ActivityFeed albumId={selectedAlbum} />
                 )}
                 
                 <Gallery

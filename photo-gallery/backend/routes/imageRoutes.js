@@ -15,6 +15,11 @@ const {
 const { getTrashItems } = require('../controllers/trashController');
 const { uploadValidation } = require('../middleware/validation');
 const { requireAlbumRole } = require('../middleware/albumAccess');
+const {
+  addComment,
+  getComments,
+  deleteComment,
+} = require('../controllers/commentController');
 
 /**
  * POST /api/upload
@@ -78,5 +83,10 @@ router.post('/image/:id/restore', protect, restoreImage);
  * Toggles favorite state on a photo for the current user.
  */
 router.post('/image/:id/favorite', protect, toggleFavoriteImage);
+
+// ── Image Comments Routes ────────────────────────────────────────────────────
+router.post('/image/:id/comments', protect, addComment);
+router.get('/image/:id/comments', protect, getComments);
+router.delete('/comments/:id', protect, deleteComment);
 
 module.exports = router;
