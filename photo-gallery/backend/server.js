@@ -110,9 +110,67 @@ app.get('/', (req, res) => {
 // ─── Centralized Error Handler Middleware ─────────────────────────────────────
 app.use(errorHandler);
 
+// ─── Socket.IO & Server Initialization ────────────────────────────────────────
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  },
+});
+
+app.set('io', io);
+app.server = server; // Attach server to app for testing integration
+
+// Import helpers for Socket verification
+const verifyToken = require('./utils/verifyToken');
+const checkAlbumAccess = require('./utils/checkAlbumAccess');
+
+io.on('connection', (socket) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) {
+    console.log('🔌 Socket connection rejected: No token provided.');
+    socket.disconnect(true);
+    return;
+  }
+
+  try {
+    const decoded = verifyToken(token);
+    socket.user = decoded;
+    console.log(`🔌 Socket connected: User "${decoded.name}" (${decoded.id})`);
+  } catch (err) {
+    console.log(`🔌 Socket connection rejected: Invalid token. Error: ${err.message}`);
+    socket.disconnect(true);
+    return;
+  }
+
+  socket.on('join-album', async ({ albumId }) => {
+    try {
+      await checkAlbumAccess(albumId, socket.user.id, 'viewer');
+      socket.join(`album:${albumId}`);
+      console.log(`🔌 Socket: User "${socket.user.name}" joined album room: album:${albumId}`);
+    } catch (err) {
+      console.warn(`🔌 Socket join-album failed: ${err.message}`);
+      socket.emit('error', { message: err.message, status: err.status || 403 });
+    }
+  });
+
+  socket.on('leave-album', ({ albumId }) => {
+    socket.leave(`album:${albumId}`);
+    console.log(`🔌 Socket: User "${socket.user.name}" left album room: album:${albumId}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`🔌 Socket disconnected: User "${socket.user?.name || 'Unknown'}"`);
+  });
+});
+
 // ─── Start Server ─────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`✅ Server running on http://localhost:${PORT}`);
     // Start automated daily trash cleanup job
     initTrashCleanupJob();

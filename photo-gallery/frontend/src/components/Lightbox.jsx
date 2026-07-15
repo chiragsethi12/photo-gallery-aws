@@ -9,6 +9,7 @@ const Lightbox = ({
   onNavigate,
   currentUser,
   activeAlbumRole = null,
+  socket = null,
 }) => {
   const currentImage = selectedIndex !== null ? images[selectedIndex] : null;
 
@@ -65,6 +66,25 @@ const Lightbox = ({
       fetchPage(currentImage._id, 1, true);
     }
   }, [currentImage?._id, fetchPage]);
+
+  // Listen for real-time comment additions
+  useEffect(() => {
+    if (!socket || !currentImage) return;
+
+    const handleCommentAdded = (newComment) => {
+      if (newComment.image === currentImage._id) {
+        setComments((prev) => {
+          if (prev.some((c) => c._id === newComment._id)) return prev;
+          return [newComment, ...prev];
+        });
+      }
+    };
+
+    socket.on('comment:added', handleCommentAdded);
+    return () => {
+      socket.off('comment:added', handleCommentAdded);
+    };
+  }, [socket, currentImage?._id]);
 
   if (selectedIndex === null || !currentImage) return null;
 

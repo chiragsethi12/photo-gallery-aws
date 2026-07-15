@@ -1,5 +1,5 @@
-// middleware/authMiddleware.js - Middleware to verify JWT and authenticate routes
 const jwt = require('jsonwebtoken');
+const verifyToken = require('../utils/verifyToken');
 
 /**
  * protect
@@ -19,7 +19,7 @@ const protect = (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = verifyToken(token);
 
       // Attach user payload to request object
       req.user = decoded;

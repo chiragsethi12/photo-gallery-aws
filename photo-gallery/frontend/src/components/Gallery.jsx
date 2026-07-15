@@ -46,6 +46,7 @@ const Gallery = ({
   onTagClick,
   albums = [],
   activeAlbumRole = null,
+  socket = null,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -250,6 +251,7 @@ const Gallery = ({
           onNavigate={handleNavigateLightbox}
           currentUser={currentUser}
           activeAlbumRole={activeAlbumRole}
+          socket={socket}
         />
       )}
 

@@ -1,5 +1,6 @@
 // src/App.jsx - Root application component with context switching and global state wiring
 import React, { useContext, useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import Navbar  from './components/Navbar';
 import Upload  from './components/Upload';
 import Gallery from './components/Gallery';
@@ -21,7 +22,7 @@ const getSharedTokenFromUrl = () => {
 };
 
 function MainApp() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, token, logout } = useContext(AuthContext);
   const [isLoginView, setIsLoginView] = useState(true);
   const [viewMode, setViewMode] = useState('photos'); // 'photos' or 'albums'
   const [activeAlbumDetails, setActiveAlbumDetails] = useState(null);
@@ -58,7 +59,8 @@ function MainApp() {
     permanentlyDeleteImage,
     permanentlyDeleteAlbum,
     toggleFavorite,
-    addImage 
+    addImage,
+    removeImage
   } = useGallery();
 
   // Load albums list as soon as user logs in
@@ -91,14 +93,60 @@ function MainApp() {
   };
 
   const refreshActiveAlbum = async () => {
-    if (!selectedAlbum) return;
-    try {
-      const details = await fetchAlbumById(selectedAlbum);
-      setActiveAlbumDetails(details);
-    } catch (err) {
-      console.error('Failed to refresh album details:', err);
+    if (selectedAlbum) {
+      try {
+        const details = await fetchAlbumById(selectedAlbum);
+        setActiveAlbumDetails(details);
+      } catch (err) {
+        console.error('Failed to refresh active album:', err);
+      }
     }
   };
+
+  const [socket, setSocket] = useState(null);
+
+  // Setup Socket.IO connection for selected album
+  useEffect(() => {
+    if (selectedAlbum && token) {
+      const socketUrl = process.env.REACT_APP_API_URL
+        ? process.env.REACT_APP_API_URL.replace('/api', '')
+        : window.location.origin;
+
+      const newSocket = io(socketUrl, {
+        auth: { token },
+      });
+
+      newSocket.on('connect', () => {
+        console.log('🔌 Connected to Socket.IO room:', selectedAlbum);
+        newSocket.emit('join-album', { albumId: selectedAlbum });
+      });
+
+      newSocket.on('image:uploaded', (newImage) => {
+        addImage(newImage);
+      });
+
+      newSocket.on('image:deleted', (deletedImageId) => {
+        removeImage(deletedImageId);
+      });
+
+      newSocket.on('collaborator:changed', () => {
+        refreshActiveAlbum();
+        loadAlbums();
+      });
+
+      newSocket.on('error', (err) => {
+        console.error('🔌 Socket error:', err.message);
+      });
+
+      setSocket(newSocket);
+
+      return () => {
+        newSocket.emit('leave-album', { albumId: selectedAlbum });
+        newSocket.disconnect();
+        setSocket(null);
+      };
+    }
+  }, [selectedAlbum, token, addImage, removeImage, loadAlbums]);
 
   const sharedToken = getSharedTokenFromUrl();
 
@@ -295,6 +343,7 @@ function MainApp() {
                   onTagClick={filterByTag}
                   albums={albums}
                   activeAlbumRole={activeAlbumDetails?.role}
+                  socket={socket}
                 />
               </div>
             )}

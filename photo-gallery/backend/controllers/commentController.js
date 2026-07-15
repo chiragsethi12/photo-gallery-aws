@@ -69,6 +69,10 @@ const addComment = wrapAsync(async (req, res) => {
       imageId: image._id,
       imageTitle: image.title,
     });
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`album:${image.album.toString()}`).emit('comment:added', populatedComment);
+    }
   }
 
   console.log(`💬 Comment added by ${req.user.name} on image ${imageId}`);

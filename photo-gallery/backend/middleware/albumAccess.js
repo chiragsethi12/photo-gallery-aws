@@ -1,5 +1,5 @@
-// middleware/albumAccess.js - Middleware to verify user roles/permissions on albums
-const Album = require('../models/Album');
+// middleware/albumAccess.js - Middleware enforcing permissions on album actions by utilizing shared checkAlbumAccess helper
+const checkAlbumAccess = require('../utils/checkAlbumAccess');
 const { AppError } = require('./errorHandler');
 
 /**
@@ -28,44 +28,15 @@ const requireAlbumRole = (minRole, idParamSource = 'params') => {
       albumId = req.params[idParamSource || 'id'];
     }
 
-    if (!albumId) {
-      return next(new AppError('Album ID is required.', 400));
-    }
-
     try {
-      const album = await Album.findOne({ _id: albumId, isDeleted: { $ne: true } });
-      if (!album) {
-        return next(new AppError('Album not found.', 404));
-      }
-
-      // Check ownership: Owner has all roles/permissions
-      if (album.createdBy && album.createdBy.toString() === req.user.id) {
-        req.albumRole = 'owner';
-        req.album = album;
-        return next();
-      }
-
-      // Check collaborator access
-      const collaborator = album.collaborators.find(
-        (c) => c.user && c.user.toString() === req.user.id
-      );
-
-      if (!collaborator) {
-        return next(new AppError('You do not have access to this album.', 403));
-      }
-
-      const roles = ['viewer', 'contributor'];
-      const minRoleIndex = roles.indexOf(minRole);
-      const userRoleIndex = roles.indexOf(collaborator.role);
-
-      if (userRoleIndex < minRoleIndex) {
-        return next(new AppError(`You do not have the required permissions (${minRole}) to perform this action.`, 403));
-      }
-
-      req.albumRole = collaborator.role;
+      const { album, role } = await checkAlbumAccess(albumId, req.user.id, minRole);
+      req.albumRole = role;
       req.album = album;
       return next();
     } catch (err) {
+      if (err.status) {
+        return next(new AppError(err.message, err.status));
+      }
       return next(err);
     }
   };

@@ -82,6 +82,10 @@ const uploadImage = wrapAsync(async (req, res) => {
 
   if (albumId) {
     logActivity(albumId, req.user.id, 'upload', { count: 1 });
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`album:${albumId}`).emit('image:uploaded', savedImage);
+    }
   }
 
   res.status(200).json(savedImage);
@@ -185,6 +189,10 @@ const deleteImage = wrapAsync(async (req, res) => {
       imageId: imageDoc._id,
       imageTitle: imageDoc.title,
     });
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`album:${imageDoc.album.toString()}`).emit('image:deleted', imageDoc._id.toString());
+    }
   }
 
   console.log(`🗑️ Image soft-deleted: ${publicId}`);

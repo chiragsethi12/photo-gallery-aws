@@ -237,6 +237,12 @@ const addCollaborator = wrapAsync(async (req, res) => {
   const populated = await Album.findById(album._id).populate('collaborators.user', 'name email');
 
   console.log(`🤝 Collaborator ${email} added to album ${album._id}`);
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`album:${album._id.toString()}`).emit('collaborator:changed', { action: 'add', userId: user._id });
+  }
+
   res.status(200).json({
     message: 'Collaborator added successfully!',
     collaborators: populated.collaborators,
@@ -279,6 +285,12 @@ const removeCollaborator = wrapAsync(async (req, res) => {
   const populated = await Album.findById(album._id).populate('collaborators.user', 'name email');
 
   console.log(`🤝 Collaborator ${userId} removed from album ${album._id}`);
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`album:${album._id.toString()}`).emit('collaborator:changed', { action: 'remove', userId });
+  }
+
   res.status(200).json({
     message: 'Collaborator removed successfully!',
     collaborators: populated.collaborators,
@@ -321,6 +333,12 @@ const updateCollaboratorRole = wrapAsync(async (req, res) => {
   const populated = await Album.findById(album._id).populate('collaborators.user', 'name email');
 
   console.log(`🤝 Collaborator ${userId} role updated to ${role} in album ${album._id}`);
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`album:${album._id.toString()}`).emit('collaborator:changed', { action: 'update', userId, role });
+  }
+
   res.status(200).json({
     message: 'Collaborator role updated successfully!',
     collaborators: populated.collaborators,

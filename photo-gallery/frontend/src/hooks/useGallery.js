@@ -221,6 +221,13 @@ const useGallery = () => {
     loadAlbums();
   }, [loadAlbums]);
 
+  // ── Remove Image (Live update) ───────────────────────────────────────────
+  const removeImage = useCallback((imageId) => {
+    setImages((prev) => prev.filter((img) => img._id !== imageId && img.publicId !== imageId));
+    setTotalImages((prev) => Math.max(0, prev - 1));
+    loadAlbums();
+  }, [loadAlbums]);
+
   return {
     images,
     loading,
@@ -251,6 +258,7 @@ const useGallery = () => {
     permanentlyDeleteAlbum,
     toggleFavorite,
     addImage,
+    removeImage,
   };
 };
 
