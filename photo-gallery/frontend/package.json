@@ -9,6 +9,8 @@
     "@testing-library/user-event": "^13.5.0",
     "autoprefixer": "^10.5.0",
     "axios": "^1.15.1",
+    "framer-motion": "^12.42.2",
+    "lucide-react": "^1.24.0",
     "postcss": "^8.5.10",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

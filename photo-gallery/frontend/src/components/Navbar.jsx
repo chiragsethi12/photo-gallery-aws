@@ -1,133 +1,118 @@
-// src/components/Navbar.jsx - Top navigation bar with search and navigation tabs
-import React, { useState } from 'react';
+// src/components/Navbar.jsx - Premium top navigation for CloudSnap
+import React, { useState } from "react";
+import {
+  Bell,
+  ChevronDown,
+  Image,
+  LayoutGrid,
+  LogOut,
+  RefreshCcw,
+  Search,
+  Sparkles,
+  UploadCloud,
+} from "lucide-react";
+import Button from "./ui/Button";
 
-/**
- * Navbar
- * Displays the app brand, search field, view tabs, active user status, and action buttons.
- */
 const Navbar = ({
   onRefresh,
   imageCount,
   user,
   onLogout,
-  viewMode = 'photos',
+  viewMode = "photos",
   onViewModeChange,
-  searchQuery = '',
+  searchQuery = "",
   onSearchChange,
+  onOpenUpload,
 }) => {
   const handleSearchKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       onSearchChange(e.target.value);
     }
   };
 
   return (
-    <header className="sticky top-0 z-50 glass border-b border-white/5 shadow-xl shadow-black/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between py-3 md:py-0 md:h-16 gap-3">
-
-          {/* ── Brand & Tabs ──────────────────────────────────────────────── */}
-          <div className="flex items-center justify-between md:justify-start gap-6">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => onViewModeChange('photos')}>
-              {/* Camera icon */}
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-lg font-bold gradient-text leading-tight">CloudSnap</h1>
-                <p className="text-[10px] text-slate-500 leading-none hidden sm:block">MongoDB Persisted Storage</p>
-              </div>
+    <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="flex flex-1 items-center gap-3">
+          <button
+            onClick={() => onViewModeChange("photos")}
+            className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-2.5 transition-all duration-200 hover:border-emerald-400/40"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400">
+              <Image className="h-5 w-5" />
             </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-white">CloudSnap</p>
+              <p className="text-[11px] text-slate-400">Studio workspace</p>
+            </div>
+          </button>
 
-            {/* View Mode Switching Tabs */}
-            {user && (
-              <nav className="flex bg-white/5 p-1 rounded-xl border border-white/10" aria-label="Gallery View Toggle">
-                <button
-                  onClick={() => onViewModeChange('photos')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                    viewMode === 'photos'
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  aria-pressed={viewMode === 'photos'}
-                >
-                  Photos
-                </button>
-                <button
-                  onClick={() => onViewModeChange('albums')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                    viewMode === 'albums'
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  aria-pressed={viewMode === 'albums'}
-                >
-                  Albums
-                </button>
-              </nav>
-            )}
+          <div className="hidden items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-1 md:flex">
+            <button
+              onClick={() => onViewModeChange("photos")}
+              className={`rounded-xl px-3 py-2 text-sm font-medium transition-all ${viewMode === "photos" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"}`}
+            >
+              Photos
+            </button>
+            <button
+              onClick={() => onViewModeChange("albums")}
+              className={`rounded-xl px-3 py-2 text-sm font-medium transition-all ${viewMode === "albums" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"}`}
+            >
+              Albums
+            </button>
           </div>
+        </div>
 
-          {/* ── Search & User controls ────────────────────────────────────── */}
-          <div className="flex items-center justify-between md:justify-end gap-3.5 flex-1">
-            {/* Search Input Box */}
-            {user && (
-              <div className="relative flex-1 max-w-xs md:max-w-md lg:max-w-sm">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search photos by title or tag..."
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
-                  className="w-full pl-9 pr-8 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => onSearchChange('')}
-                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path d="M18 6L6 18M6 6l12 12"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              {/* User info display */}
-              {user && (
-                <NavbarUserDropdown
-                  user={user}
-                  onLogout={onLogout}
-                  viewMode={viewMode}
-                  onViewModeChange={onViewModeChange}
-                />
-              )}
-
-              {/* Refresh button */}
+        <div className="hidden flex-1 items-center justify-center md:flex">
+          <label className="flex w-full max-w-xl items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-2.5 text-slate-400 transition-all duration-200 focus-within:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-400/20">
+            <Search className="h-4 w-4" />
+            <input
+              type="text"
+              placeholder="Search by title, tag, or album"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onKeyPress={handleSearchKeyPress}
+              className="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
+            />
+            {searchQuery ? (
               <button
-                onClick={onRefresh}
-                title="Refresh items"
-                className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-indigo-500/50 px-3 py-1.5 rounded-xl transition-all duration-200 group"
+                onClick={() => onSearchChange("")}
+                className="text-slate-500 hover:text-slate-200"
               >
-                <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <polyline points="23 4 23 10 17 10"/>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                </svg>
-                <span className="hidden lg:inline">Refresh</span>
+                ×
               </button>
-            </div>
-          </div>
+            ) : null}
+          </label>
+        </div>
 
+        <div className="flex items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onOpenUpload}
+            className="hidden sm:inline-flex"
+          >
+            <UploadCloud className="h-4 w-4" />
+            Upload
+          </Button>
+          <button className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/70 text-slate-300 transition-all hover:border-emerald-400/40 hover:text-white">
+            <Bell className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onRefresh}
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/70 text-slate-300 transition-all hover:border-emerald-400/40 hover:text-white"
+            title="Refresh"
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </button>
+          {user ? (
+            <NavbarUserDropdown
+              user={user}
+              onLogout={onLogout}
+              viewMode={viewMode}
+              onViewModeChange={onViewModeChange}
+            />
+          ) : null}
         </div>
       </div>
     </header>
@@ -141,58 +126,69 @@ const NavbarUserDropdown = ({ user, onLogout, viewMode, onViewModeChange }) => {
     <div className="relative">
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="flex items-center gap-2 text-xs text-slate-400 bg-white/3 border border-white/5 hover:border-white/20 hover:bg-white/5 px-3 py-1.5 rounded-full transition-all duration-200"
+        className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-2.5 py-2 text-left transition-all hover:border-emerald-400/40"
       >
-        <span className="font-medium text-slate-300">Logged in as <strong className="text-white">{user.name}</strong></span>
-        <svg className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-sm font-semibold text-emerald-300">
+          {user?.name?.charAt(0)?.toUpperCase() || "U"}
+        </div>
+        <div className="hidden sm:block">
+          <p className="text-sm font-medium text-white">
+            {user?.name || "You"}
+          </p>
+          <p className="text-[11px] text-slate-400">Workspace owner</p>
+        </div>
+        <ChevronDown
+          className={`h-4 w-4 text-slate-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
-      {dropdownOpen && (
+      {dropdownOpen ? (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-          <div className="absolute right-0 mt-2 w-48 rounded-xl bg-[#0f172a]/95 backdrop-blur border border-white/10 shadow-2xl py-1.5 z-20 animate-fade-in font-sans">
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setDropdownOpen(false)}
+          />
+          <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-800 bg-slate-950/95 p-2 shadow-soft">
             <button
               onClick={() => {
-                onViewModeChange('analytics');
+                onViewModeChange("analytics");
                 setDropdownOpen(false);
               }}
-              className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-white/5 transition-all duration-150 ${viewMode === 'analytics' ? 'text-indigo-400' : 'text-slate-300'}`}
+              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm ${viewMode === "analytics" ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300 hover:bg-slate-800"}`}
             >
-              Analytics Dashboard
+              <Sparkles className="h-4 w-4" /> Analytics
             </button>
             <button
               onClick={() => {
-                onViewModeChange('sessions');
+                onViewModeChange("sessions");
                 setDropdownOpen(false);
               }}
-              className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-white/5 transition-all duration-150 ${viewMode === 'sessions' ? 'text-indigo-400' : 'text-slate-300'}`}
+              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm ${viewMode === "sessions" ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300 hover:bg-slate-800"}`}
             >
-              Active Sessions
+              <LayoutGrid className="h-4 w-4" /> Sessions
             </button>
             <button
               onClick={() => {
-                onViewModeChange('trash');
+                onViewModeChange("trash");
                 setDropdownOpen(false);
               }}
-              className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-white/5 transition-all duration-150 ${viewMode === 'trash' ? 'text-indigo-400' : 'text-slate-300'}`}
+              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm ${viewMode === "trash" ? "bg-emerald-500/10 text-emerald-300" : "text-slate-300 hover:bg-slate-800"}`}
             >
-              Trash Bin
+              <Image className="h-4 w-4" /> Trash
             </button>
-            <hr className="border-white/5 my-1" />
+            <div className="my-1 h-px bg-slate-800" />
             <button
               onClick={() => {
                 onLogout();
                 setDropdownOpen(false);
               }}
-              className="w-full text-left px-4 py-2 text-xs font-bold text-red-400 hover:bg-white/5 hover:text-red-300 transition-all duration-150"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-300 hover:bg-slate-800"
             >
-              Logout
+              <LogOut className="h-4 w-4" /> Logout
             </button>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 };
