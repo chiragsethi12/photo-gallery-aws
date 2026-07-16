@@ -32,11 +32,12 @@ const wrapAsync = (fn) => {
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   
+  const logger = require('../config/logger');
   // Log unexpected errors for server diagnostics
   if (!err.isOperational) {
-    console.error('💥 UNEXPECTED ERROR:', err);
+    logger.error('💥 UNEXPECTED ERROR: ' + (err.stack || err));
   } else if (process.env.NODE_ENV !== 'test') {
-    console.warn(`⚠️ Operational Error [${statusCode}]:`, err.message);
+    logger.warn(`⚠️ Operational Error [${statusCode}]: ${err.message}`);
   }
 
   // Handle mongoose validation errors or duplicate keys if they bypass validations

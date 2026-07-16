@@ -47,6 +47,11 @@ const Gallery = ({
   albums = [],
   activeAlbumRole = null,
   socket = null,
+  dateFrom = '',
+  dateTo = '',
+  sort = 'newest',
+  onDateRangeChange = () => {},
+  onSortChange = () => {},
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -166,6 +171,53 @@ const Gallery = ({
   // ── Image grid ───────────────────────────────────────────────────────────
   return (
     <section className="space-y-4">
+      {/* ── Filters & Sorting Controls ───────────────────────────────────── */}
+      <div className="glass rounded-2xl border border-white/5 p-4 flex flex-col md:flex-row gap-4 items-center justify-between text-xs text-slate-350 shadow-lg">
+        {/* Date boundaries */}
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-semibold">From:</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => onDateRangeChange(e.target.value, dateTo)}
+              className="px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-semibold">To:</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => onDateRangeChange(dateFrom, e.target.value)}
+              className="px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => onDateRangeChange('', '')}
+              className="px-2 py-1 text-slate-400 hover:text-indigo-400 underline font-semibold transition-colors text-[10px] uppercase tracking-wider"
+            >
+              Clear dates
+            </button>
+          )}
+        </div>
+
+        {/* Sorting options */}
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <span className="text-slate-400 font-semibold">Sort by:</span>
+          <select
+            value={sort}
+            onChange={(e) => onSortChange(e.target.value)}
+            className="px-3 py-1.5 rounded-xl bg-[#0b1424] border border-white/10 text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer text-xs"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="name">Name (A-Z)</option>
+          </select>
+        </div>
+      </div>
+
       <SectionHeader count={totalImages} />
 
       {/* ── Active Filter Badges ────────────────────────────────────────── */}

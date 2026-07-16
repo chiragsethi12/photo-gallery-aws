@@ -25,7 +25,8 @@ const createAlbum = wrapAsync(async (req, res) => {
   });
 
   const savedAlbum = await album.save();
-  console.log(`✅ Album created: ${savedAlbum._id}`);
+  const logger = require('../config/logger');
+  logger.info(`✅ Album created: ${savedAlbum._id}`);
   res.status(201).json(savedAlbum);
 });
 
@@ -128,7 +129,8 @@ const deleteAlbum = wrapAsync(async (req, res) => {
   album.deletedAt = new Date();
   await album.save();
 
-  console.log(`🗑️ Album soft-deleted: ${req.params.id}`);
+  const logger = require('../config/logger');
+  logger.info(`🗑️ Album soft-deleted: ${req.params.id}`);
   res.status(200).json({ message: 'Album soft-deleted successfully!', albumId: req.params.id });
 });
 
@@ -151,7 +153,8 @@ const restoreAlbum = wrapAsync(async (req, res) => {
   album.deletedAt = null;
   await album.save();
 
-  console.log(`🔄 Album restored: ${album.name}`);
+  const logger = require('../config/logger');
+  logger.info(`🔄 Album restored: ${album.name}`);
   res.status(200).json({ message: 'Album restored successfully!', album });
 });
 
@@ -176,7 +179,8 @@ const permanentDeleteAlbum = wrapAsync(async (req, res) => {
   // Delete the album itself
   await Album.findByIdAndDelete(req.params.id);
 
-  console.log(`🗑️ Album permanently deleted: ${req.params.id}`);
+  const logger = require('../config/logger');
+  logger.info(`🗑️ Album permanently deleted: ${req.params.id}`);
   res.status(200).json({ message: 'Album permanently deleted successfully!', albumId: req.params.id });
 });
 
@@ -236,7 +240,8 @@ const addCollaborator = wrapAsync(async (req, res) => {
   // Populate user details for response
   const populated = await Album.findById(album._id).populate('collaborators.user', 'name email');
 
-  console.log(`🤝 Collaborator ${email} added to album ${album._id}`);
+  const logger = require('../config/logger');
+  logger.info(`🤝 Collaborator ${email} added to album ${album._id}`);
 
   const io = req.app.get('io');
   if (io) {
@@ -284,7 +289,8 @@ const removeCollaborator = wrapAsync(async (req, res) => {
 
   const populated = await Album.findById(album._id).populate('collaborators.user', 'name email');
 
-  console.log(`🤝 Collaborator ${userId} removed from album ${album._id}`);
+  const logger = require('../config/logger');
+  logger.info(`🤝 Collaborator ${userId} removed from album ${album._id}`);
 
   const io = req.app.get('io');
   if (io) {
@@ -332,7 +338,8 @@ const updateCollaboratorRole = wrapAsync(async (req, res) => {
 
   const populated = await Album.findById(album._id).populate('collaborators.user', 'name email');
 
-  console.log(`🤝 Collaborator ${userId} role updated to ${role} in album ${album._id}`);
+  const logger = require('../config/logger');
+  logger.info(`🤝 Collaborator ${userId} role updated to ${role} in album ${album._id}`);
 
   const io = req.app.get('io');
   if (io) {

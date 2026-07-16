@@ -335,3 +335,19 @@ export const fetchAlbumActivity = async (albumId, page = 1, limit = 10) => {
   });
   return response.data;
 };
+
+/**
+ * Fetch storage statistics analytics reports.
+ */
+export const fetchStorageAnalytics = async () => {
+  const response = await axios.get(`${API_BASE}/analytics/storage`);
+  return response.data;
+};
+
+/**
+ * Fetch activity statistics metrics.
+ */
+export const fetchActivityAnalytics = async () => {
+  const response = await axios.get(`${API_BASE}/analytics/activity`);
+  return response.data;
+};

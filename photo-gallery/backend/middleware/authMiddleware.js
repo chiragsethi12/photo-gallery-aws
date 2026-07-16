@@ -26,7 +26,8 @@ const protect = (req, res, next) => {
 
       return next();
     } catch (error) {
-      console.error('JWT verification error:', error.message);
+      const logger = require('../config/logger');
+      logger.error('JWT verification error: ' + error.message);
       if (error.name === 'TokenExpiredError') {
         return res.status(401).json({ error: 'TokenExpiredError', message: 'Not authorized: token is expired.' });
       }

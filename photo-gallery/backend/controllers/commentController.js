@@ -75,7 +75,8 @@ const addComment = wrapAsync(async (req, res) => {
     }
   }
 
-  console.log(`💬 Comment added by ${req.user.name} on image ${imageId}`);
+  const logger = require('../config/logger');
+  logger.info(`💬 Comment added by ${req.user.name} on image ${imageId}`);
   res.status(201).json(populatedComment);
 });
 
@@ -145,7 +146,8 @@ const deleteComment = wrapAsync(async (req, res) => {
 
   await Comment.findByIdAndDelete(commentId);
 
-  console.log(`🗑️ Comment ${commentId} deleted by user ${req.user.id}`);
+  const logger = require('../config/logger');
+  logger.info(`🗑️ Comment ${commentId} deleted by user ${req.user.id}`);
   res.status(200).json({ message: 'Comment deleted successfully!' });
 });
 

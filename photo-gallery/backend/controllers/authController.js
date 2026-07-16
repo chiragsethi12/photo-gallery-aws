@@ -55,7 +55,8 @@ const register = wrapAsync(async (req, res) => {
   const savedUser = await user.save();
   const { token, refreshToken } = await issueTokens(savedUser, req);
 
-  console.log(`👤 User registered: ${savedUser.email}`);
+  const logger = require('../config/logger');
+  logger.info(`👤 User registered: ${savedUser.email}`);
 
   res.status(201).json({
     token,
@@ -86,7 +87,8 @@ const login = wrapAsync(async (req, res) => {
 
   const { token, refreshToken } = await issueTokens(user, req);
 
-  console.log(`🔑 User logged in: ${user.email}`);
+  const logger = require('../config/logger');
+  logger.info(`🔑 User logged in: ${user.email}`);
 
   res.status(200).json({
     token,
@@ -133,7 +135,8 @@ const refresh = wrapAsync(async (req, res) => {
 
     // Issue brand new token pair
     const { token: newAccessToken, refreshToken: newRefreshToken } = await issueTokens(user, req);
-    console.log(`🔄 Tokens rotated for user ${user.email}`);
+    const logger = require('../config/logger');
+    logger.info(`🔄 Tokens rotated for user ${user.email}`);
 
     return res.status(200).json({
       token: newAccessToken,
@@ -145,7 +148,8 @@ const refresh = wrapAsync(async (req, res) => {
   const revokedSessions = await Session.find({ revokedAt: { $ne: null } });
   for (const session of revokedSessions) {
     if (await bcrypt.compare(refreshToken, session.refreshTokenHash)) {
-      console.warn(`⚠️ Potential refresh token reuse/theft detected! Revoked Session ID: ${session._id}, User: ${session.userId}`);
+      const logger = require('../config/logger');
+      logger.warn(`⚠️ Potential refresh token reuse/theft detected! Revoked Session ID: ${session._id}, User: ${session.userId}`);
       break;
     }
   }
@@ -165,7 +169,8 @@ const logout = wrapAsync(async (req, res) => {
     if (await bcrypt.compare(refreshToken, session.refreshTokenHash)) {
       session.revokedAt = new Date();
       await session.save();
-      console.log(`🔒 Session revoked for user ${req.user.id}`);
+      const logger = require('../config/logger');
+      logger.info(`🔒 Session revoked for user ${req.user.id}`);
       return res.status(200).json({ message: 'Session revoked successfully.' });
     }
   }

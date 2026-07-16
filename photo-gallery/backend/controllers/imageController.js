@@ -6,6 +6,8 @@ const Image = require('../models/Image');
 const Album = require('../models/Album');
 const logActivity = require('../utils/logActivity');
 const { AppError, wrapAsync } = require('../middleware/errorHandler');
+const logger = require('../config/logger');
+const crypto = require('crypto');
 
 // ─── Upload Image ─────────────────────────────────────────────────────────────
 
@@ -18,6 +20,22 @@ const { AppError, wrapAsync } = require('../middleware/errorHandler');
 const uploadImage = wrapAsync(async (req, res) => {
   if (!req.file) {
     throw new AppError('No file provided. Please select an image.', 400);
+  }
+
+  // Calculate file content hash
+  const fileHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+
+  // Check if user already uploaded this file
+  const existingImage = await Image.findOne({
+    uploadedBy: req.user.id,
+    contentHash: fileHash,
+  });
+
+  if (existingImage) {
+    return res.status(409).json({
+      error: 'You already have this image',
+      existingImage,
+    });
   }
 
   // Wrap the Cloudinary upload stream in a Promise
@@ -37,7 +55,7 @@ const uploadImage = wrapAsync(async (req, res) => {
   };
 
   const result = await uploadToCloudinary(req.file.buffer);
-  console.log(`✅ Cloudinary Uploaded: ${result.public_id}`);
+  logger.info(`✅ Cloudinary Uploaded: ${result.public_id}`);
 
   // Parse tags if provided in the body
   let parsedTags = [];
@@ -75,10 +93,11 @@ const uploadImage = wrapAsync(async (req, res) => {
     tags: parsedTags,
     album: albumId,
     uploadedBy: req.user.id, // Set automatically from authentication middleware
+    contentHash: fileHash,
   });
 
   const savedImage = await image.save();
-  console.log(`💾 Saved metadata to MongoDB: ${savedImage._id}`);
+  logger.info(`💾 Saved metadata to MongoDB: ${savedImage._id}`);
 
   if (albumId) {
     logActivity(albumId, req.user.id, 'upload', { count: 1 });
@@ -96,7 +115,7 @@ const uploadImage = wrapAsync(async (req, res) => {
 /**
  * GET /api/images
  * Queries the MongoDB Image collection instead of Cloudinary API.
- * Supports query params: page, limit, tag, album, search.
+ * Supports query params: page, limit, tag, tags, album, search, dateFrom, dateTo, sort.
  * Returns: { images, totalPages, currentPage, totalImages }
  */
 const getImages = wrapAsync(async (req, res) => {
@@ -109,8 +128,13 @@ const getImages = wrapAsync(async (req, res) => {
     isDeleted: { $ne: true }
   };
 
-  // Filter by tag
-  if (req.query.tag) {
+  // Filter by tag or multiple tags
+  if (req.query.tags) {
+    const tagsList = req.query.tags.split(',').map((t) => t.trim()).filter(Boolean);
+    if (tagsList.length > 0) {
+      filter.tags = { $all: tagsList };
+    }
+  } else if (req.query.tag) {
     filter.tags = req.query.tag;
   }
 
@@ -118,6 +142,17 @@ const getImages = wrapAsync(async (req, res) => {
   if (req.query.album) {
     if (mongoose.Types.ObjectId.isValid(req.query.album)) {
       filter.album = req.query.album;
+    }
+  }
+
+  // Filter by date range
+  if (req.query.dateFrom || req.query.dateTo) {
+    filter.createdAt = {};
+    if (req.query.dateFrom) {
+      filter.createdAt.$gte = new Date(req.query.dateFrom);
+    }
+    if (req.query.dateTo) {
+      filter.createdAt.$lte = new Date(req.query.dateTo);
     }
   }
 
@@ -129,9 +164,17 @@ const getImages = wrapAsync(async (req, res) => {
     ];
   }
 
+  // Sort ordering options
+  let sortOption = { createdAt: -1 }; // newest
+  if (req.query.sort === 'oldest') {
+    sortOption = { createdAt: 1 };
+  } else if (req.query.sort === 'name') {
+    sortOption = { title: 1 };
+  }
+
   const totalImages = await Image.countDocuments(filter);
   const images = await Image.find(filter)
-    .sort({ createdAt: -1 })
+    .sort(sortOption)
     .skip(skip)
     .limit(limit);
 
@@ -145,26 +188,21 @@ const getImages = wrapAsync(async (req, res) => {
   });
 });
 
-// ─── Delete Image (Cloudinary + MongoDB) ──────────────────────────────────────
+// ─── Delete Image (Soft Delete) ───────────────────────────────────────────────
 
 /**
- * DELETE /api/image/:publicId(*)
- * Soft deletes an image by marking isDeleted: true and setting deletedAt.
+ * DELETE /api/image/:publicId
+ * Performs a soft-delete by setting isDeleted: true and deletedAt: Date.now.
  */
 const deleteImage = wrapAsync(async (req, res) => {
-  const publicId = decodeURIComponent(req.params.publicId);
+  const { publicId } = req.params;
 
-  if (!publicId) {
-    throw new AppError('Image publicId is required.', 400);
-  }
-
-  // Find the image document in DB first to check ownership
   const imageDoc = await Image.findOne({ publicId });
   if (!imageDoc) {
-    throw new AppError('Image not found in database.', 404);
+    throw new AppError('Image not found.', 404);
   }
 
-  // Check if current user is the owner of the image OR owner of the album containing the image
+  // Check ownership of the image OR owner of the album containing the image
   let isAuthorized = false;
   if (imageDoc.uploadedBy && imageDoc.uploadedBy.toString() === req.user.id) {
     isAuthorized = true;
@@ -179,11 +217,11 @@ const deleteImage = wrapAsync(async (req, res) => {
     throw new AppError('You can only delete your own images', 403);
   }
 
-  // Perform soft delete
   imageDoc.isDeleted = true;
   imageDoc.deletedAt = new Date();
   await imageDoc.save();
 
+  // Log image deleted activity if it belonged to an album
   if (imageDoc.album) {
     logActivity(imageDoc.album, req.user.id, 'image_deleted', {
       imageId: imageDoc._id,
@@ -195,7 +233,7 @@ const deleteImage = wrapAsync(async (req, res) => {
     }
   }
 
-  console.log(`🗑️ Image soft-deleted: ${publicId}`);
+  logger.info(`🗑️ Image soft-deleted: ${publicId}`);
   res.status(200).json({ message: 'Image soft-deleted successfully!', publicId });
 });
 
@@ -206,18 +244,18 @@ const permanentlyDeleteImageRecord = async (publicId) => {
   // 1. Delete from Cloudinary
   try {
     const cloudinaryResult = await cloudinary.uploader.destroy(publicId);
-    console.log(`🗑️ Cloudinary destroy result for ${publicId}:`, cloudinaryResult.result);
+    logger.info(`🗑️ Cloudinary destroy result for ${publicId}: ${cloudinaryResult.result}`);
   } catch (cloudinaryErr) {
-    console.error(`❌ Cloudinary delete error for ${publicId}:`, cloudinaryErr.message);
+    logger.error(`❌ Cloudinary delete error for ${publicId}: ${cloudinaryErr.message}`);
     throw new AppError('Failed to delete from Cloudinary: ' + cloudinaryErr.message, 500);
   }
 
   // 2. Delete from MongoDB
   try {
     await Image.findOneAndDelete({ publicId });
-    console.log(`🗑️ MongoDB document permanently deleted for publicId: ${publicId}`);
+    logger.info(`🗑️ MongoDB document permanently deleted for publicId: ${publicId}`);
   } catch (dbErr) {
-    console.error(`❌ MongoDB delete error for ${publicId}:`, dbErr.message);
+    logger.error(`❌ MongoDB delete error for ${publicId}: ${dbErr.message}`);
     throw new AppError('Failed to delete metadata from MongoDB: ' + dbErr.message, 500);
   }
 };
@@ -241,7 +279,7 @@ const restoreImage = wrapAsync(async (req, res) => {
   imageDoc.deletedAt = null;
   await imageDoc.save();
 
-  console.log(`🔄 Image restored: ${imageDoc.publicId}`);
+  logger.info(`🔄 Image restored: ${imageDoc.publicId}`);
   res.status(200).json({ message: 'Image restored successfully!', image: imageDoc });
 });
 
@@ -302,7 +340,7 @@ const toggleFavoriteImage = wrapAsync(async (req, res) => {
   }
 
   await image.save();
-  console.log(`❤️ Toggled favorite for user ${userId} on image ${id}`);
+  logger.info(`❤️ Toggled favorite for user ${userId} on image ${id}`);
 
   res.status(200).json({
     message: 'Favorite toggled successfully',

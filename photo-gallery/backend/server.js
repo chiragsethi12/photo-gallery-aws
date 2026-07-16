@@ -13,6 +13,7 @@ const imageRoutes = require('./routes/imageRoutes');
 const albumRoutes = require('./routes/albumRoutes');
 const authRoutes = require('./routes/authRoutes');
 const shareRoutes = require('./routes/shareRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 const { errorHandler, wrapAsync } = require('./middleware/errorHandler');
 const cloudinary = require('./config/cloudinaryConfig');
 const { initTrashCleanupJob } = require('./jobs/trashCleanup');
@@ -31,10 +32,36 @@ app.use(helmet());
 // 2. Gzip compression
 app.use(compression());
 
+// Request-ID & Pino HTTP logging middleware
+const { randomUUID } = require('crypto');
+const pinoHttp = require('pino-http');
+const logger = require('./config/logger');
+
+app.use((req, res, next) => {
+  const reqId = req.header('X-Request-Id') || randomUUID();
+  req.id = reqId;
+  res.setHeader('X-Request-Id', reqId);
+  next();
+});
+
+app.use(
+  pinoHttp({
+    logger,
+    genReqId: (req) => req.id,
+    serializers: {
+      req: (req) => ({
+        id: req.id,
+        method: req.method,
+        url: req.url,
+      }),
+    },
+  })
+);
+
 // 3. Rate limiting (100 requests per 15 minutes per IP globally)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'test' ? 10000 : 100, // limit each IP requests per windowMs
+  max: (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'test-server') ? 10000 : 100, // limit each IP requests per windowMs
   message: { error: 'Too many requests from this IP, please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -61,17 +88,28 @@ app.use(cors({
 // Parse incoming JSON request bodies
 app.use(express.json());
 
+// Swagger API Documentation UI
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // All image-related API routes are prefixed with /api
 app.use('/api', imageRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Shareable links router mounted at /api/share.
 // Note: The resolveShareLink route (GET /api/share/:token) bypasses global protect middleware
 // to serve read-only resource details to unauthenticated users.
 app.use('/api/share', shareRoutes);
+
+// GET /health - Health liveness check
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 // Health-check ready route
 app.get('/health/ready', wrapAsync(async (req, res) => {
@@ -89,7 +127,7 @@ app.get('/health/ready', wrapAsync(async (req, res) => {
       }
     }
   } catch (err) {
-    console.error('Cloudinary health check failed:', err.message);
+    logger.error('Cloudinary health check failed: ' + err.message);
     cloudinaryHealthy = false;
   }
 
@@ -102,7 +140,7 @@ app.get('/health/ready', wrapAsync(async (req, res) => {
   });
 }));
 
-// Health-check route
+// Default route
 app.get('/', (req, res) => {
   res.json({ message: 'Photo Gallery API is running 🚀' });
 });
@@ -132,7 +170,7 @@ const checkAlbumAccess = require('./utils/checkAlbumAccess');
 io.on('connection', (socket) => {
   const token = socket.handshake.auth?.token;
   if (!token) {
-    console.log('🔌 Socket connection rejected: No token provided.');
+    logger.info('🔌 Socket connection rejected: No token provided.');
     socket.disconnect(true);
     return;
   }
@@ -140,9 +178,9 @@ io.on('connection', (socket) => {
   try {
     const decoded = verifyToken(token);
     socket.user = decoded;
-    console.log(`🔌 Socket connected: User "${decoded.name}" (${decoded.id})`);
+    logger.info(`🔌 Socket connected: User "${decoded.name}" (${decoded.id})`);
   } catch (err) {
-    console.log(`🔌 Socket connection rejected: Invalid token. Error: ${err.message}`);
+    logger.info(`🔌 Socket connection rejected: Invalid token. Error: ${err.message}`);
     socket.disconnect(true);
     return;
   }
@@ -151,27 +189,27 @@ io.on('connection', (socket) => {
     try {
       await checkAlbumAccess(albumId, socket.user.id, 'viewer');
       socket.join(`album:${albumId}`);
-      console.log(`🔌 Socket: User "${socket.user.name}" joined album room: album:${albumId}`);
+      logger.info(`🔌 Socket: User "${socket.user.name}" joined album room: album:${albumId}`);
     } catch (err) {
-      console.warn(`🔌 Socket join-album failed: ${err.message}`);
+      logger.warn(`🔌 Socket join-album failed: ${err.message}`);
       socket.emit('error', { message: err.message, status: err.status || 403 });
     }
   });
 
   socket.on('leave-album', ({ albumId }) => {
     socket.leave(`album:${albumId}`);
-    console.log(`🔌 Socket: User "${socket.user.name}" left album room: album:${albumId}`);
+    logger.info(`🔌 Socket: User "${socket.user.name}" left album room: album:${albumId}`);
   });
 
   socket.on('disconnect', () => {
-    console.log(`🔌 Socket disconnected: User "${socket.user?.name || 'Unknown'}"`);
+    logger.info(`🔌 Socket disconnected: User "${socket.user?.name || 'Unknown'}"`);
   });
 });
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
   server.listen(PORT, () => {
-    console.log(`✅ Server running on http://localhost:${PORT}`);
+    logger.info(`✅ Server running on http://localhost:${PORT}`);
     // Start automated daily trash cleanup job
     initTrashCleanupJob();
   });

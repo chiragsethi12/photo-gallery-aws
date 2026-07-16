@@ -29,6 +29,9 @@ const useGallery = () => {
   const [selectedAlbum, setSelectedAlbum] = useState('');
   const [selectedTag, setSelectedTag]     = useState('');
   const [searchQuery, setSearchQuery]     = useState('');
+  const [dateFrom, setDateFrom]           = useState('');
+  const [dateTo, setDateTo]               = useState('');
+  const [sort, setSort]                   = useState('newest');
 
   // ── Album States ───────────────────────────────────────────────────────────
   const [albums, setAlbums]             = useState([]);
@@ -41,15 +44,27 @@ const useGallery = () => {
   const [trashLoading, setTrashLoading] = useState(false);
 
   // ── Load Images ──────────────────────────────────────────────────────────
-  const loadImages = useCallback(async (page = 1, album = selectedAlbum, tag = selectedTag, search = searchQuery) => {
+  const loadImages = useCallback(async (
+    page = 1,
+    album = selectedAlbum,
+    tag = selectedTag,
+    search = searchQuery,
+    from = dateFrom,
+    to = dateTo,
+    sortOption = sort
+  ) => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchImages({
         page,
         album,
-        tag,
-        search
+        tags: tag && tag.includes(',') ? tag : undefined,
+        tag: tag && !tag.includes(',') ? tag : undefined,
+        search,
+        dateFrom: from || undefined,
+        dateTo: to || undefined,
+        sort: sortOption,
       });
       setImages(data.images || []);
       setTotalPages(data.totalPages || 1);
@@ -60,7 +75,7 @@ const useGallery = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedAlbum, selectedTag, searchQuery]);
+  }, [selectedAlbum, selectedTag, searchQuery, dateFrom, dateTo, sort]);
 
   // Load initial images
   useEffect(() => {
@@ -85,18 +100,29 @@ const useGallery = () => {
   const filterByAlbum = useCallback((albumId) => {
     setSelectedAlbum(albumId);
     setSelectedTag(''); // Clear tag when switching albums
-    loadImages(1, albumId, '', searchQuery);
-  }, [searchQuery, loadImages]);
+    loadImages(1, albumId, '', searchQuery, dateFrom, dateTo, sort);
+  }, [searchQuery, dateFrom, dateTo, sort, loadImages]);
 
   const filterByTag = useCallback((tag) => {
     setSelectedTag(tag);
-    loadImages(1, selectedAlbum, tag, searchQuery);
-  }, [selectedAlbum, searchQuery, loadImages]);
+    loadImages(1, selectedAlbum, tag, searchQuery, dateFrom, dateTo, sort);
+  }, [selectedAlbum, searchQuery, dateFrom, dateTo, sort, loadImages]);
 
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
-    loadImages(1, selectedAlbum, selectedTag, query);
-  }, [selectedAlbum, selectedTag, loadImages]);
+    loadImages(1, selectedAlbum, selectedTag, query, dateFrom, dateTo, sort);
+  }, [selectedAlbum, selectedTag, dateFrom, dateTo, sort, loadImages]);
+
+  const filterByDateRange = useCallback((from, to) => {
+    setDateFrom(from);
+    setDateTo(to);
+    loadImages(1, selectedAlbum, selectedTag, searchQuery, from, to, sort);
+  }, [selectedAlbum, selectedTag, searchQuery, sort, loadImages]);
+
+  const changeSort = useCallback((sortOption) => {
+    setSort(sortOption);
+    loadImages(1, selectedAlbum, selectedTag, searchQuery, dateFrom, dateTo, sortOption);
+  }, [selectedAlbum, selectedTag, searchQuery, dateFrom, dateTo, loadImages]);
 
   // ── Delete Image ─────────────────────────────────────────────────────────
   const deleteImage = useCallback(async (publicId) => {
@@ -259,6 +285,11 @@ const useGallery = () => {
     toggleFavorite,
     addImage,
     removeImage,
+    dateFrom,
+    dateTo,
+    sort,
+    filterByDateRange,
+    changeSort,
   };
 };
 

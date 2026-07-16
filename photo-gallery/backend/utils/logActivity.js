@@ -20,7 +20,8 @@ const logActivity = (albumId, actorId, type, metadata = {}) => {
     type,
     metadata,
   }).catch((err) => {
-    console.warn(`⚠️ Failed to log activity [${type}] for album [${albumId}]:`, err.message);
+    const logger = require('../config/logger');
+    logger.warn(`⚠️ Failed to log activity [${type}] for album [${albumId}]: ${err.message}`);
   });
 };
 

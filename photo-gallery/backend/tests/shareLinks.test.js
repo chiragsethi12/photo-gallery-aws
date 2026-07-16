@@ -1,4 +1,5 @@
 const request = require('supertest');
+const mongoose = require('mongoose');
 const Album = require('../models/Album');
 const Image = require('../models/Image');
 const User = require('../models/User');
@@ -210,5 +211,81 @@ describe('Share Links API', () => {
     // Verify it is indeed revoked
     const check = await ShareLink.findOne({ token: link.token });
     expect(check.revokedAt).toBeDefined();
+  });
+
+  it('Fails validation for missing fields or invalid resource types', async () => {
+    const res1 = await request(app)
+      .post('/api/share')
+      .set('Authorization', `Bearer ${tokenOwner}`)
+      .send({});
+    expect(res1.status).toBe(400);
+
+    const res2 = await request(app)
+      .post('/api/share')
+      .set('Authorization', `Bearer ${tokenOwner}`)
+      .send({ resourceType: 'video', resourceId: album._id.toString() });
+    expect(res2.status).toBe(400);
+  });
+
+  it('Fails when sharing non-existent album or image', async () => {
+    const fakeId = new mongoose.Types.ObjectId().toString();
+    const resAlbum = await request(app)
+      .post('/api/share')
+      .set('Authorization', `Bearer ${tokenOwner}`)
+      .send({ resourceType: 'album', resourceId: fakeId });
+    expect(resAlbum.status).toBe(404);
+
+    const resImage = await request(app)
+      .post('/api/share')
+      .set('Authorization', `Bearer ${tokenOwner}`)
+      .send({ resourceType: 'image', resourceId: fakeId });
+    expect(resImage.status).toBe(404);
+  });
+
+  it('Collaborator can generate a share link for the album', async () => {
+    // Add stranger as a collaborator
+    album.collaborators.push({ user: stranger._id, role: 'viewer' });
+    await album.save();
+
+    const res = await request(app)
+      .post('/api/share')
+      .set('Authorization', `Bearer ${tokenStranger}`)
+      .send({ resourceType: 'album', resourceId: album._id.toString() });
+    expect(res.status).toBe(201);
+  });
+
+  it('Allows sharing an image directly and resolves it', async () => {
+    const linkRes = await request(app)
+      .post('/api/share')
+      .set('Authorization', `Bearer ${tokenOwner}`)
+      .send({ resourceType: 'image', resourceId: image._id.toString() });
+    expect(linkRes.status).toBe(201);
+
+    const token = linkRes.body.token;
+
+    const res = await request(app).get(`/api/share/${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.resourceType).toBe('image');
+    expect(res.body.image.publicId).toBe('img-1');
+  });
+
+  it('Fails resolving a link where the resource has since been deleted', async () => {
+    const link = await ShareLink.create({
+      token: 'deleted-resource-token',
+      resourceType: 'album',
+      resourceId: new mongoose.Types.ObjectId(), // fake non-existent ID
+      createdBy: owner._id,
+    });
+
+    const res = await request(app).get(`/api/share/${link.token}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('This link is no longer available');
+  });
+
+  it('Fails revoking a non-existent link token', async () => {
+    const res = await request(app)
+      .delete('/api/share/non-existent-token')
+      .set('Authorization', `Bearer ${tokenOwner}`);
+    expect(res.status).toBe(404);
   });
 });

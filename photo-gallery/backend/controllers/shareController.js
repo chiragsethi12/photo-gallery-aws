@@ -96,7 +96,8 @@ const createShareLink = wrapAsync(async (req, res) => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const url = `${frontendUrl}/share/${token}`;
 
-  console.log(`🔗 Share link generated for ${resourceType} ${resourceId}: ${token}`);
+  const logger = require('../config/logger');
+  logger.info(`🔗 Share link generated for ${resourceType} ${resourceId}: ${token}`);
   res.status(201).json({
     token,
     resourceType,
@@ -217,7 +218,8 @@ const revokeShareLink = wrapAsync(async (req, res) => {
   shareLink.revokedAt = new Date();
   await shareLink.save();
 
-  console.log(`🚫 Share link revoked: ${token}`);
+  const logger = require('../config/logger');
+  logger.info(`🚫 Share link revoked: ${token}`);
   res.status(200).json({ message: 'Share link revoked successfully!' });
 });
 

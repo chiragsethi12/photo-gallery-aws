@@ -9,7 +9,7 @@ import { uploadImage } from '../api/imageApi';
  *   onUploadSuccess(newImage) - called after each successful upload
  *   albums - Array of user albums to select from
  */
-const Upload = ({ onUploadSuccess, albums = [] }) => {
+const Upload = ({ onUploadSuccess, albums = [], onViewImage = null }) => {
   const [tags, setTags] = useState('');
   const [selectedAlbum, setSelectedAlbum] = useState('');
   const [uploads, setUploads] = useState([]); // Array of { id, filename, progress, status, error }
@@ -79,8 +79,21 @@ const Upload = ({ onUploadSuccess, albums = [] }) => {
       } catch (err) {
         console.error('File upload error:', err);
         const errMsg = err.response?.data?.error || 'Upload failed.';
+        const isConflict = err.response?.status === 409;
+        const existingImage = err.response?.data?.existingImage;
+
         setUploads((prev) =>
-          prev.map((item) => (item.id === uploadItem.id ? { ...item, status: 'error', error: errMsg } : item))
+          prev.map((item) =>
+            item.id === uploadItem.id
+              ? {
+                  ...item,
+                  status: 'error',
+                  error: errMsg,
+                  isConflict,
+                  existingImage,
+                }
+              : item
+          )
         );
       }
     });
@@ -221,7 +234,17 @@ const Upload = ({ onUploadSuccess, albums = [] }) => {
 
               {/* Error messages */}
               {upload.error && (
-                <p className="text-[10px] text-red-400 line-clamp-1">{upload.error}</p>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-red-400 line-clamp-1">{upload.error}</p>
+                  {upload.isConflict && upload.existingImage && onViewImage && (
+                    <button
+                      onClick={() => onViewImage(upload.existingImage)}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline block text-left"
+                    >
+                      View existing image
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ))}

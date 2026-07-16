@@ -57,11 +57,17 @@ const ImageSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  contentHash: {
+    type: String,
+    required: true,
+    default: () => require('crypto').randomBytes(16).toString('hex'),
+  },
 });
 
 ImageSchema.index({ uploadedBy: 1 });
 ImageSchema.index({ album: 1 });
 ImageSchema.index({ tags: 1 });
 ImageSchema.index({ title: 'text', tags: 'text' });
+ImageSchema.index({ uploadedBy: 1, contentHash: 1 }, { unique: true });
 
 module.exports = mongoose.model('Image', ImageSchema);

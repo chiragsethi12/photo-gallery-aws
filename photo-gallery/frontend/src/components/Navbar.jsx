@@ -155,6 +155,15 @@ const NavbarUserDropdown = ({ user, onLogout, viewMode, onViewModeChange }) => {
           <div className="absolute right-0 mt-2 w-48 rounded-xl bg-[#0f172a]/95 backdrop-blur border border-white/10 shadow-2xl py-1.5 z-20 animate-fade-in font-sans">
             <button
               onClick={() => {
+                onViewModeChange('analytics');
+                setDropdownOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-white/5 transition-all duration-150 ${viewMode === 'analytics' ? 'text-indigo-400' : 'text-slate-300'}`}
+            >
+              Analytics Dashboard
+            </button>
+            <button
+              onClick={() => {
                 onViewModeChange('sessions');
                 setDropdownOpen(false);
               }}

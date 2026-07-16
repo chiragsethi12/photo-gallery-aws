@@ -9,6 +9,7 @@ import SessionsPanel from './components/SessionsPanel';
 import TrashView from './components/TrashView';
 import CollaboratorPanel from './components/CollaboratorPanel';
 import ActivityFeed from './components/ActivityFeed';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 import useGallery from './hooks/useGallery';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { fetchAlbumById } from './api/imageApi';
@@ -60,7 +61,12 @@ function MainApp() {
     permanentlyDeleteAlbum,
     toggleFavorite,
     addImage,
-    removeImage
+    removeImage,
+    dateFrom,
+    dateTo,
+    sort,
+    filterByDateRange,
+    changeSort,
   } = useGallery();
 
   // Load albums list as soon as user logs in
@@ -148,6 +154,16 @@ function MainApp() {
     }
   }, [selectedAlbum, token, addImage, removeImage, loadAlbums]);
 
+  const handleViewImage = (image) => {
+    if (image.album) {
+      handleSelectAlbum(image.album);
+    } else {
+      handleClearAlbum();
+    }
+    filterByTag('');
+    handleSearch(image.title || image.publicId.split('/').pop());
+  };
+
   const sharedToken = getSharedTokenFromUrl();
 
   if (sharedToken) {
@@ -223,7 +239,12 @@ function MainApp() {
           <aside className="w-full lg:w-80 xl:w-96 flex-shrink-0">
             <div className="sticky top-24">
               {(!selectedAlbum || (activeAlbumDetails && activeAlbumDetails.role !== 'viewer')) && (
-                <Upload onUploadSuccess={addImage} activeAlbum={selectedAlbum} albums={albums} />
+                <Upload
+                  onUploadSuccess={addImage}
+                  activeAlbum={selectedAlbum}
+                  albums={albums}
+                  onViewImage={handleViewImage}
+                />
               )}
 
               {/* Info badge */}
@@ -261,6 +282,8 @@ function MainApp() {
                 permanentlyDeleteImage={permanentlyDeleteImage}
                 permanentlyDeleteAlbum={permanentlyDeleteAlbum}
               />
+            ) : viewMode === 'analytics' ? (
+              <AnalyticsDashboard />
             ) : (
               <div className="space-y-6 w-full">
                 {activeAlbumDetails && (
@@ -344,6 +367,11 @@ function MainApp() {
                   albums={albums}
                   activeAlbumRole={activeAlbumDetails?.role}
                   socket={socket}
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  sort={sort}
+                  onDateRangeChange={filterByDateRange}
+                  onSortChange={changeSort}
                 />
               </div>
             )}
