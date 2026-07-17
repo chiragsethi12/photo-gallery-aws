@@ -38,6 +38,7 @@ const Upload = ({
       progress: 0,
       status: "pending",
       error: null,
+      preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
     }));
 
     setUploads((prev) => [...newUploads, ...prev]);
@@ -213,13 +214,22 @@ const Upload = ({
               key={upload.id}
               className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span
-                  className="truncate text-sm font-medium text-slate-200"
-                  title={upload.filename}
-                >
-                  {upload.filename}
-                </span>
+              <div className="flex items-center gap-3">
+                {upload.preview ? (
+                  <img
+                    src={upload.preview}
+                    alt="Preview"
+                    className="h-10 w-10 rounded-lg object-cover border border-slate-850"
+                  />
+                ) : null}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <span
+                      className="truncate text-sm font-medium text-slate-200"
+                      title={upload.filename}
+                    >
+                      {upload.filename}
+                    </span>
                 {upload.status === "uploading" ? (
                   <span className="text-sm text-emerald-300">
                     {upload.progress}%
@@ -235,6 +245,8 @@ const Upload = ({
                     <XCircle className="h-4 w-4" /> Failed
                   </span>
                 ) : null}
+                  </div>
+                </div>
               </div>
               {upload.status === "uploading" ? (
                 <div className="mt-3 h-2 rounded-full bg-slate-800">

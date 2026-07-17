@@ -42,7 +42,7 @@ const Navbar = ({
               <Image className="h-5 w-5" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-white">CloudSnap</p>
+              <p className="text-sm font-semibold text-white">PixHive</p>
               <p className="text-[11px] text-slate-400">Studio workspace</p>
             </div>
           </button>

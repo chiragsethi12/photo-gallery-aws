@@ -137,20 +137,70 @@ const AnalyticsDashboard = () => {
         </div>
       </div>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
-              Total images
+              Photos
             </span>
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-300">
               <ImageIcon className="h-5 w-5" />
             </div>
           </div>
           <p className="text-3xl font-semibold text-white">{totalImages}</p>
-          <p className="mt-2 text-sm text-slate-500">
-            Active non-deleted files
-          </p>
+          <p className="mt-2 text-xs text-slate-500">Active files</p>
+        </div>
+
+        <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 shadow-soft">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
+              Albums
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-300">
+              <Sparkles className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-3xl font-semibold text-white">{storageData?.albumCount || 0}</p>
+          <p className="mt-2 text-xs text-slate-500">Curated sets</p>
+        </div>
+
+        <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 shadow-soft">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
+              Favorites
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-300">
+              <ImageIcon className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-3xl font-semibold text-white">{storageData?.favoriteCount || 0}</p>
+          <p className="mt-2 text-xs text-slate-500">Hearted photos</p>
+        </div>
+
+        <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 shadow-soft">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
+              Shares
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-300">
+              <Sparkles className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-3xl font-semibold text-white">{storageData?.sharedLinkCount || 0}</p>
+          <p className="mt-2 text-xs text-slate-500">Active public links</p>
+        </div>
+
+        <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 shadow-soft">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
+              Trash
+            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-800 text-slate-300">
+              <Activity className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-3xl font-semibold text-white">{storageData?.trashCount || 0}</p>
+          <p className="mt-2 text-xs text-slate-500">Deleted items</p>
         </div>
 
         <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 shadow-soft">
@@ -158,33 +208,14 @@ const AnalyticsDashboard = () => {
             <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
               Top format
             </span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-300">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-fuchsia-500/10 text-fuchsia-300">
               <PieChartIcon className="h-5 w-5" />
             </div>
           </div>
-          <p className="text-3xl font-semibold text-white">
+          <p className="text-2xl font-semibold text-white truncate" title={mostCommonFormat}>
             {mostCommonFormat}
           </p>
-          <p className="mt-2 text-sm text-slate-500">
-            Most common file type in your library
-          </p>
-        </div>
-
-        <div className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 shadow-soft">
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
-              Activity count
-            </span>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-fuchsia-500/10 text-fuchsia-300">
-              <Activity className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="text-3xl font-semibold text-white">
-            {totalActivitiesCount}
-          </p>
-          <p className="mt-2 text-sm text-slate-500">
-            Recorded actions over time
-          </p>
+          <p className="mt-2 text-xs text-slate-500">Most common</p>
         </div>
       </div>
 

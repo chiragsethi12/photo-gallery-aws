@@ -1,4 +1,4 @@
-// src/App.jsx - Premium CloudSnap workspace shell
+// src/App.jsx - Premium PixHive workspace shell
 import React, { useContext, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -21,6 +21,11 @@ import TrashView from "./components/TrashView";
 import CollaboratorPanel from "./components/CollaboratorPanel";
 import ActivityFeed from "./components/ActivityFeed";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
+import FavoritesView from "./components/FavoritesView";
+import SharedView from "./components/SharedView";
+import SettingsView from "./components/SettingsView";
+import ToastContainer from "./components/ui/Toast";
+import { ToastProvider } from "./context/ToastContext";
 import useGallery from "./hooks/useGallery";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 import { fetchAlbumById } from "./api/imageApi";
@@ -79,6 +84,7 @@ function MainApp() {
     sort,
     filterByDateRange,
     changeSort,
+    deleteAlbum,
   } = useGallery();
 
   useEffect(() => {
@@ -200,9 +206,12 @@ function MainApp() {
     photos: "Curate your latest uploads and keep every frame in order.",
     albums:
       "Organize images into polished collections with shared collaboration.",
-    analytics: "Review activity and understand how your library is growing.",
+    favorites: "Heart the images you love from the gallery to see them here.",
+    shared: "Manage your shared links and collaborations.",
     trash: "Restore or permanently clear items you no longer need.",
     sessions: "Monitor your active workspace sessions and collaborators.",
+    analytics: "Review activity and understand how your library is growing.",
+    settings: "Manage your account, security, and preferences.",
   };
 
   const pageTitle =
@@ -214,7 +223,13 @@ function MainApp() {
           ? "Trash"
           : viewMode === "sessions"
             ? "Sessions"
-            : "Photos";
+            : viewMode === "favorites"
+              ? "Favorites"
+              : viewMode === "shared"
+                ? "Shared"
+                : viewMode === "settings"
+                  ? "Settings"
+                  : "Photos";
   const pageSubtitle =
     subtitleMap[viewMode] ||
     "A calm, focused workspace designed for everyday photo management.";
@@ -234,14 +249,6 @@ function MainApp() {
         onLogout={logout}
         viewMode={viewMode}
         onViewModeChange={(next) => {
-          if (
-            next === "favorites" ||
-            next === "shared" ||
-            next === "settings"
-          ) {
-            setViewMode("photos");
-            return;
-          }
           setViewMode(next);
         }}
         searchQuery={searchQuery}
@@ -258,45 +265,21 @@ function MainApp() {
                   Workspace
                 </p>
                 <h2 className="mt-1 text-base font-semibold text-white">
-                  CloudSnap Library
+                  PixHive Library
                 </h2>
               </div>
               <Badge theme="accent">Live</Badge>
             </div>
-            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
-              <div className="flex items-center justify-between text-sm text-slate-400">
-                <span>Storage</span>
-                <span className="font-semibold text-white">
-                  {totalImages} files
-                </span>
-              </div>
-              <div className="mt-3 h-2 rounded-full bg-slate-800">
-                <div className="h-2 w-3/4 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400" />
-              </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Your workspace is organized and ready for the next upload.
-              </p>
-            </div>
           </div>
 
-          <nav className="mt-5 space-y-1">
+          <nav className="mt-6 flex-1 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active =
-                viewMode === item.id ||
-                (item.id === "photos" && viewMode === "favorites");
+              const active = viewMode === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => {
-                    if (
-                      item.id === "favorites" ||
-                      item.id === "shared" ||
-                      item.id === "settings"
-                    ) {
-                      setViewMode("photos");
-                      return;
-                    }
                     setViewMode(item.id);
                   }}
                   className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm transition-all ${active ? "bg-emerald-500/10 text-emerald-300" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
@@ -354,6 +337,7 @@ function MainApp() {
               onSelectAlbum={handleSelectAlbum}
               onRefreshAlbums={loadAlbums}
               currentUser={user}
+              onDeleteAlbum={deleteAlbum}
             />
           ) : viewMode === "sessions" ? (
             <SessionsPanel />
@@ -370,6 +354,12 @@ function MainApp() {
             />
           ) : viewMode === "analytics" ? (
             <AnalyticsDashboard />
+          ) : viewMode === "favorites" ? (
+            <FavoritesView currentUser={user} albums={albums} />
+          ) : viewMode === "shared" ? (
+            <SharedView currentUser={user} />
+          ) : viewMode === "settings" ? (
+            <SettingsView />
           ) : (
             <div className="space-y-6">
               {activeAlbumDetails ? (
@@ -486,7 +476,7 @@ function MainApp() {
       />
 
       <footer className="border-t border-slate-800/80 px-4 py-6 text-center text-xs text-slate-500 sm:px-6 lg:px-8">
-        CloudSnap · Designed for calm collaboration and modern photo management.
+        PixHive · Your Memories, Organized.
       </footer>
     </div>
   );
@@ -494,9 +484,12 @@ function MainApp() {
 
 function App() {
   return (
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <MainApp />
+        <ToastContainer />
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 

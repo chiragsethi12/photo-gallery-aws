@@ -1,19 +1,25 @@
 // src/components/LoginForm.jsx - Premium sign-in experience
 import React, { useState, useContext } from "react";
-import { ArrowRight, Lock, Mail, Sparkles } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock, Mail, Sparkles } from "lucide-react";
 import { AuthContext } from "../context/AuthContext";
+import useToast from "../hooks/useToast";
 
 const LoginForm = ({ onToggleForm }) => {
   const { login } = useContext(AuthContext);
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const isEmailValid = email.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isFormValid = email.length > 0 && password.length > 0 && isEmailValid;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Please fill in all fields.");
+    if (!isFormValid) {
+      setError("Please enter a valid email and password.");
       return;
     }
 
@@ -25,6 +31,9 @@ const LoginForm = ({ onToggleForm }) => {
 
     if (!result.success) {
       setError(result.error);
+      toast.error(result.error);
+    } else {
+      toast.success("Welcome back! Signed in successfully.");
     }
   };
 
@@ -44,8 +53,11 @@ const LoginForm = ({ onToggleForm }) => {
         </div>
 
         <div className="mb-7 text-center">
-          <h2 className="text-2xl font-semibold text-white">Welcome back</h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <h2 className="text-2xl font-bold text-white">PixHive</h2>
+          <p className="mt-1 text-sm italic text-emerald-400">
+            Your Memories, Organized.
+          </p>
+          <p className="mt-4 text-xs text-slate-400">
             Re-enter your workspace and pick up where you left off.
           </p>
         </div>
@@ -72,11 +84,16 @@ const LoginForm = ({ onToggleForm }) => {
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="input-shell pl-10"
+                className={`input-shell pl-10 ${email.length > 0 && !isEmailValid ? "border-rose-500/40 focus:border-rose-500/60 focus:ring-rose-500/20" : ""}`}
                 disabled={submitting}
                 required
               />
             </div>
+            {email.length > 0 && !isEmailValid ? (
+              <p className="mt-1.5 text-xs text-rose-400">
+                Please enter a valid email address.
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -90,20 +107,32 @@ const LoginForm = ({ onToggleForm }) => {
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 id="login-password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input-shell pl-10"
+                className="input-shell pl-10 pr-10"
                 disabled={submitting}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-300"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !isFormValid}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 transition-all hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Signing in…" : "Sign in"}

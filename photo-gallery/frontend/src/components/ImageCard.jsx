@@ -21,7 +21,10 @@ const ImageCard = ({
   const [confirming, setConfirming] = useState(false);
 
   const canDelete = currentUser && (
-    ((image.uploadedBy && (image.uploadedBy === currentUser.id || (image.uploadedBy._id && image.uploadedBy._id === currentUser.id))) || activeAlbumRole === 'owner') && activeAlbumRole !== 'viewer'
+    !image.uploadedBy || 
+    image.uploadedBy === currentUser.id || 
+    image.uploadedBy._id === currentUser.id || 
+    activeAlbumRole === 'owner'
   );
 
   const isFavorited = image.favoritedBy && currentUser && (

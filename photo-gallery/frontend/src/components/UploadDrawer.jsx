@@ -35,7 +35,7 @@ export default function UploadDrawer({
                   Upload
                 </p>
                 <h2 className="mt-1 text-xl font-semibold text-white">
-                  Add photos to CloudSnap
+                  Add photos to PixHive
                 </h2>
               </div>
               <Button

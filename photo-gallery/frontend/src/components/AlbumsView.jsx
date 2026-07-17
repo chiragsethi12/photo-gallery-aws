@@ -1,12 +1,14 @@
 // src/components/AlbumsView.jsx - Premium album workspace
 import React, { useState } from "react";
-import { FolderPlus, Share2, Sparkles } from "lucide-react";
+import { FolderPlus, Share2, Sparkles, Trash2 } from "lucide-react";
 import ShareModal from "./ShareModal";
 import { createAlbum } from "../api/imageApi";
 import SectionHeader from "./ui/SectionHeader";
 import EmptyState from "./ui/EmptyState";
 import Button from "./ui/Button";
 import Badge from "./ui/Badge";
+import ConfirmDialog from "./ui/ConfirmDialog";
+import useToast from "../hooks/useToast";
 
 const AlbumsView = ({
   albums,
@@ -15,7 +17,9 @@ const AlbumsView = ({
   onSelectAlbum,
   onRefreshAlbums,
   currentUser,
+  onDeleteAlbum,
 }) => {
+  const toast = useToast();
   const [showModal, setShowModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareResourceId, setShareResourceId] = useState(null);
@@ -24,6 +28,10 @@ const AlbumsView = ({
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
+  
+  // Album delete states
+  const [albumToDelete, setAlbumToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleCreateAlbum = async (e) => {
     e.preventDefault();
@@ -41,10 +49,26 @@ const AlbumsView = ({
       setDescription("");
       setShowModal(false);
       onRefreshAlbums();
+      toast.success("Album created successfully.");
     } catch (err) {
       setError(err.response?.data?.error || "Failed to create album.");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteAlbumConfirm = async () => {
+    if (!albumToDelete) return;
+    setDeleteLoading(true);
+    try {
+      await onDeleteAlbum(albumToDelete);
+      toast.success("Album moved to Trash.");
+      onRefreshAlbums();
+    } catch (err) {
+      toast.error("Failed to delete album.");
+    } finally {
+      setDeleteLoading(false);
+      setAlbumToDelete(null);
     }
   };
 
@@ -126,19 +150,32 @@ const AlbumsView = ({
                 onClick={() => onSelectAlbum(album._id)}
                 className="group relative flex aspect-[4/3] cursor-pointer flex-col justify-end overflow-hidden rounded-[28px] border border-slate-800 bg-slate-900/70 p-4 transition-all hover:-translate-y-1 hover:border-emerald-400/40"
               >
-                {canShare ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShareResourceId(album._id);
-                      setShareResourceType("album");
-                      setShowShareModal(true);
-                    }}
-                    className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-950/70 text-slate-300 transition-all hover:border-emerald-400/40 hover:text-white"
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </button>
-                ) : null}
+                <div className="absolute right-3 top-3 z-20 flex gap-2">
+                  {canShare ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShareResourceId(album._id);
+                        setShareResourceType("album");
+                        setShowShareModal(true);
+                      }}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-950/70 text-slate-300 transition-all hover:border-emerald-400/40 hover:text-white"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                  {isOwner ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAlbumToDelete(album._id);
+                      }}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-950/70 text-slate-300 transition-all hover:border-rose-400/40 hover:text-rose-300"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
                 <div className="absolute inset-0 overflow-hidden">
                   {album.coverImage ? (
                     <img
@@ -274,6 +311,18 @@ const AlbumsView = ({
           }}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={albumToDelete !== null}
+        title="Delete Album?"
+        message="Are you sure you want to delete this album? Photos inside the album will not be deleted but they will be removed from the album workspace."
+        confirmLabel="Move to Trash"
+        cancelLabel="Cancel"
+        danger
+        loading={deleteLoading}
+        onConfirm={handleDeleteAlbumConfirm}
+        onCancel={() => setAlbumToDelete(null)}
+      />
     </div>
   );
 };

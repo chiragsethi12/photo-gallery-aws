@@ -9,7 +9,8 @@ import {
   restoreImage as apiRestoreImage,
   restoreAlbum as apiRestoreAlbum,
   permanentlyDeleteImage as apiPermanentlyDeleteImage,
-  permanentlyDeleteAlbum as apiPermanentlyDeleteAlbum
+  permanentlyDeleteAlbum as apiPermanentlyDeleteAlbum,
+  deleteAlbum as apiDeleteAlbum
 } from '../api/imageApi';
 
 /**
@@ -254,6 +255,17 @@ const useGallery = () => {
     loadAlbums();
   }, [loadAlbums]);
 
+  // ── Soft Delete Album ───────────────────────────────────────────────────
+  const deleteAlbum = useCallback(async (id) => {
+    try {
+      await apiDeleteAlbum(id);
+      setAlbums((prev) => prev.filter((alb) => alb._id !== id));
+    } catch (err) {
+      console.error('Failed to soft delete album:', err);
+      throw err;
+    }
+  }, []);
+
   return {
     images,
     loading,
@@ -290,6 +302,7 @@ const useGallery = () => {
     sort,
     filterByDateRange,
     changeSort,
+    deleteAlbum,
   };
 };
 

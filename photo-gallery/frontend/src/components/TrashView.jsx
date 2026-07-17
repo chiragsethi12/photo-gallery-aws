@@ -1,9 +1,16 @@
 // src/components/TrashView.jsx - Glassmorphic dashboard to manage soft-deleted assets
 import React, { useEffect, useState } from 'react';
+import { RefreshCcw, Trash2, Undo2, AlertTriangle, ShieldAlert } from 'lucide-react';
+import SectionHeader from './ui/SectionHeader';
+import EmptyState from './ui/EmptyState';
+import Button from './ui/Button';
+import ConfirmDialog from './ui/ConfirmDialog';
+import useToast from '../hooks/useToast';
+import { emptyTrash } from '../api/imageApi';
 
 const TrashView = ({
-  trashImages,
-  trashAlbums,
+  trashImages = [],
+  trashAlbums = [],
   loading,
   loadTrash,
   restoreImage,
@@ -11,8 +18,10 @@ const TrashView = ({
   permanentlyDeleteImage,
   permanentlyDeleteAlbum
 }) => {
+  const toast = useToast();
   const [confirmingImage, setConfirmingImage] = useState(null);
   const [confirmingAlbum, setConfirmingAlbum] = useState(null);
+  const [showEmptyTrashConfirm, setShowEmptyTrashConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -23,8 +32,9 @@ const TrashView = ({
     try {
       setActionLoading(true);
       await restoreImage(id);
+      toast.success('Photo restored successfully.');
     } catch (err) {
-      alert('Failed to restore image.');
+      toast.error('Failed to restore photo.');
     } finally {
       setActionLoading(false);
     }
@@ -34,8 +44,9 @@ const TrashView = ({
     try {
       setActionLoading(true);
       await restoreAlbum(id);
+      toast.success('Album restored successfully.');
     } catch (err) {
-      alert('Failed to restore album.');
+      toast.error('Failed to restore album.');
     } finally {
       setActionLoading(false);
     }
@@ -46,8 +57,9 @@ const TrashView = ({
       setActionLoading(true);
       await permanentlyDeleteImage(id);
       setConfirmingImage(null);
+      toast.success('Photo permanently deleted.');
     } catch (err) {
-      alert('Failed to permanently delete image.');
+      toast.error('Failed to permanently delete photo.');
     } finally {
       setActionLoading(false);
     }
@@ -58,8 +70,23 @@ const TrashView = ({
       setActionLoading(true);
       await permanentlyDeleteAlbum(id);
       setConfirmingAlbum(null);
+      toast.success('Album permanently deleted.');
     } catch (err) {
-      alert('Failed to permanently delete album.');
+      toast.error('Failed to permanently delete album.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    try {
+      setActionLoading(true);
+      await emptyTrash();
+      await loadTrash();
+      setShowEmptyTrashConfirm(false);
+      toast.success('Trash emptied successfully.');
+    } catch (err) {
+      toast.error('Failed to empty trash bin.');
     } finally {
       setActionLoading(false);
     }
@@ -75,84 +102,111 @@ const TrashView = ({
     return Math.max(0, diffDays);
   };
 
-  return (
-    <div className="glass rounded-2xl border border-white/5 p-6 md:p-8 shadow-xl shadow-black/30 animate-fade-in max-w-7xl mx-auto font-sans">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h2 className="text-xl font-bold text-white">Trash Bin</h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Items in the trash will be permanently deleted after 30 days.
-          </p>
+  if (loading && trashImages.length === 0 && trashAlbums.length === 0) {
+    return (
+      <div className="space-y-4">
+        <SectionHeader
+          title="Trash Bin"
+          subtitle="Loading trashed files…"
+          icon={Trash2}
+        />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="skeleton aspect-square rounded-[24px]"
+              style={{ animationDelay: `${i * 100}ms` }}
+            />
+          ))}
         </div>
-        <button
-          onClick={loadTrash}
-          className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
-          disabled={loading || actionLoading}
-        >
-          Refresh
-        </button>
       </div>
+    );
+  }
 
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : trashImages.length === 0 && trashAlbums.length === 0 ? (
-        <div className="text-center py-16 text-slate-500 text-sm">
-          <svg className="w-12 h-12 mx-auto opacity-20 mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-            <path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"/>
-          </svg>
-          <p>Your trash bin is empty.</p>
-        </div>
+  const hasItems = trashImages.length > 0 || trashAlbums.length > 0;
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        title="Trash Bin"
+        subtitle="Items will be permanently deleted automatically after 30 days."
+        icon={Trash2}
+        actions={
+          hasItems ? [
+            <Button
+              key="refresh"
+              variant="secondary"
+              size="sm"
+              onClick={loadTrash}
+              disabled={actionLoading}
+            >
+              <RefreshCcw className="h-4 w-4" /> Refresh
+            </Button>,
+            <Button
+              key="empty"
+              variant="danger"
+              size="sm"
+              onClick={() => setShowEmptyTrashConfirm(true)}
+              disabled={actionLoading}
+            >
+              <Trash2 className="h-4 w-4" /> Empty trash
+            </Button>
+          ] : [
+            <Button
+              key="refresh"
+              variant="secondary"
+              size="sm"
+              onClick={loadTrash}
+              disabled={actionLoading}
+            >
+              <RefreshCcw className="h-4 w-4" /> Refresh
+            </Button>
+          ]
+        }
+      />
+
+      {!hasItems ? (
+        <EmptyState
+          icon={Trash2}
+          title="Trash bin is empty"
+          description="Deleted images and albums are kept here safely for 30 days before permanent deletion."
+        />
       ) : (
         <div className="space-y-10">
           {/* --- Soft-deleted Albums --- */}
           {trashAlbums.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4">Trashed Albums</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Trashed Albums</h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {trashAlbums.map((album) => (
-                  <div key={album._id} className="relative rounded-2xl bg-white/3 border border-white/5 p-4 flex flex-col justify-between">
+                  <div key={album._id} className="flex flex-col justify-between rounded-[24px] border border-slate-800 bg-slate-900/70 p-4">
                     <div>
-                      <h4 className="text-sm font-bold text-white truncate">{album.name}</h4>
-                      <p className="text-xs text-slate-400 mt-1 line-clamp-2">{album.description || 'No description'}</p>
-                      <span className="inline-block mt-3 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full font-medium">
+                      <h4 className="text-sm font-semibold text-white truncate">{album.name}</h4>
+                      <p className="mt-1 text-xs text-slate-400 line-clamp-2">{album.description || 'No description'}</p>
+                      <span className="inline-block mt-3 text-[10px] bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full font-medium">
                         Permanently deleted in {getRemainingDays(album.deletedAt)} days
                       </span>
                     </div>
 
-                    <div className="flex gap-2 mt-4 pt-3 border-t border-white/5">
-                      <button
+                    <div className="flex gap-2 mt-4 pt-3 border-t border-slate-800">
+                      <Button
                         onClick={() => handleRestoreAlbum(album._id)}
                         disabled={actionLoading}
-                        className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1"
                       >
-                        Restore
-                      </button>
+                        <Undo2 className="h-3.5 w-3.5" /> Restore
+                      </Button>
 
-                      {confirmingAlbum === album._id ? (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => setConfirmingAlbum(null)}
-                            className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-[10px] transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => handlePermanentlyDeleteAlbum(album._id)}
-                            className="px-2 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmingAlbum(album._id)}
-                          className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-red-600 hover:text-white text-slate-400 text-xs font-semibold transition-all"
-                        >
-                          Delete Forever
-                        </button>
-                      )}
+                      <Button
+                        onClick={() => setConfirmingAlbum(album._id)}
+                        variant="danger"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete Forever
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -163,58 +217,46 @@ const TrashView = ({
           {/* --- Soft-deleted Images --- */}
           {trashImages.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4">Trashed Photos</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Trashed Photos</h3>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {trashImages.map((image) => (
-                  <div key={image._id} className="group relative rounded-2xl bg-white/3 border border-white/5 overflow-hidden flex flex-col justify-between">
-                    <div className="aspect-square relative overflow-hidden bg-black/40">
+                  <div key={image._id} className="group relative overflow-hidden rounded-[24px] border border-slate-800 bg-slate-900/60 flex flex-col justify-between">
+                    <div className="aspect-square relative overflow-hidden bg-slate-950">
                       <img
                         src={image.url}
                         alt={image.title || 'Trashed'}
                         className="w-full h-full object-cover opacity-75 group-hover:opacity-90 transition-opacity"
+                        loading="lazy"
                       />
-                      <span className="absolute bottom-2 left-2 text-[9px] bg-red-500/90 text-white px-2 py-0.5 rounded-full font-bold shadow-lg">
+                      <span className="absolute bottom-2 left-2 text-[10px] bg-slate-950/80 backdrop-blur border border-slate-800 text-rose-300 px-2.5 py-0.5 rounded-full font-semibold shadow-lg">
                         {getRemainingDays(image.deletedAt)}d left
                       </span>
                     </div>
 
                     <div className="p-3">
-                      <p className="text-xs font-bold text-white truncate" title={image.title || 'Untitled'}>
+                      <p className="text-xs font-semibold text-white truncate" title={image.title || 'Untitled'}>
                         {image.title || 'Untitled'}
                       </p>
                       
-                      <div className="flex gap-1.5 mt-3 pt-2 border-t border-white/5">
-                        <button
+                      <div className="flex gap-2 mt-3 pt-2 border-t border-slate-800">
+                        <Button
                           onClick={() => handleRestoreImage(image._id)}
                           disabled={actionLoading}
-                          className="flex-1 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-colors disabled:opacity-50"
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1 px-1 py-1"
                         >
                           Restore
-                        </button>
+                        </Button>
 
-                        {confirmingImage === image._id ? (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => setConfirmingImage(null)}
-                              className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white text-[10px] transition-colors"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => handlePermanentlyDeleteImage(image._id)}
-                              className="px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold transition-colors"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setConfirmingImage(image._id)}
-                            className="flex-1 py-1 rounded bg-white/5 hover:bg-red-600 hover:text-white text-slate-400 text-[11px] font-semibold transition-all"
-                          >
-                            Delete Forever
-                          </button>
-                        )}
+                        <Button
+                          onClick={() => setConfirmingImage(image._id)}
+                          variant="danger"
+                          size="sm"
+                          className="flex-1 px-1 py-1"
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -224,6 +266,40 @@ const TrashView = ({
           )}
         </div>
       )}
+
+      {/* --- Confirm Dialogs --- */}
+      <ConfirmDialog
+        open={confirmingImage !== null}
+        title="Permanently Delete Photo?"
+        message="This action is permanent and cannot be undone. The photo file and metadata will be destroyed."
+        confirmLabel="Delete permanently"
+        danger
+        loading={actionLoading}
+        onConfirm={() => handlePermanentlyDeleteImage(confirmingImage)}
+        onCancel={() => setConfirmingImage(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmingAlbum !== null}
+        title="Permanently Delete Album?"
+        message="This will permanently delete this album. Images inside the album will not be deleted but will no longer be grouped."
+        confirmLabel="Delete album"
+        danger
+        loading={actionLoading}
+        onConfirm={() => handlePermanentlyDeleteAlbum(confirmingAlbum)}
+        onCancel={() => setConfirmingAlbum(null)}
+      />
+
+      <ConfirmDialog
+        open={showEmptyTrashConfirm}
+        title="Empty Trash Bin?"
+        message="This will permanently delete all photos and albums currently in the trash. This action is absolute and irreversible."
+        confirmLabel="Empty trash bin"
+        danger
+        loading={actionLoading}
+        onConfirm={handleEmptyTrash}
+        onCancel={() => setShowEmptyTrashConfirm(false)}
+      />
     </div>
   );
 };
