@@ -35,6 +35,7 @@ const Gallery = ({
   sort = "newest",
   onDateRangeChange = () => {},
   onSortChange = () => {},
+  onOpenUpload = () => {},
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -207,7 +208,7 @@ const Gallery = ({
                 Clear filters
               </Button>
             ) : (
-              <Button variant="primary" onClick={() => {}}>
+              <Button variant="primary" onClick={onOpenUpload}>
                 Upload photos
               </Button>
             )

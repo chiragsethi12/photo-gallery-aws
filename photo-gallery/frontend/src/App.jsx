@@ -458,6 +458,7 @@ function MainApp() {
                 sort={sort}
                 onDateRangeChange={filterByDateRange}
                 onSortChange={changeSort}
+                onOpenUpload={() => setUploadOpen(true)}
               />
             </div>
           )}
