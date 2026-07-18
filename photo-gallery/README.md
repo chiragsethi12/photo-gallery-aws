@@ -1,4 +1,5 @@
-# Cloud Photo Gallery (MERN Stack)
+# PixHive (MERN Stack)
+*Your Memories, Organized.*
 
 A containerized MERN application providing an interactive cloud photo gallery dashboard, persisted in MongoDB, utilizing Cloudinary image optimization APIs, and protected by JWT authentication with refresh-token session management and role-based album collaboration.
 
@@ -8,7 +9,7 @@ A containerized MERN application providing an interactive cloud photo gallery da
 
 ### Backend
 - **Node.js & Express**: Secure API router endpoints.
-- **Mongoose & MongoDB**: Document schema modeling and Atlas persistent storage.
+- Mongoose & MongoDB: Document schema modeling and Atlas persistent storage.
 - **JWT (JsonWebTokens)**: Access + refresh token-based session management with automatic rotation.
 - **Bcrypt.js**: Salting and hashing passwords (10 salt rounds).
 - **Helmet**: Securing HTTP headers.
@@ -41,12 +42,12 @@ A containerized MERN application providing an interactive cloud photo gallery da
 ## 🌟 Features
 
 ### Core Gallery
-1. **User Authentication**: Secure registration and login with encrypted passwords, short-lived access tokens (15 min), and long-lived refresh tokens (7 days) with automatic rotation.
+1. **User Authentication**: Secure registration and login with encrypted passwords, password visibility toggles, strength indicator checklist, short-lived access tokens (15 min), and long-lived refresh tokens (7 days).
 2. **Session Management**: View and revoke active sessions from the UI. Each device/browser gets its own refresh token with user-agent tracking.
-3. **Albums Board**: Categorize photos into albums. Responsive albums board displaying image counts and cover photos, with a floating modal to create new albums.
-4. **Tags & Search**: Comma-separated tag strings parsed on upload. Navbar-based queries filtering by titles or tag lists.
+3. **Albums Board**: Categorize photos into albums. Responsive albums board displaying image counts and cover photos, with a floating modal to create and delete albums.
+4. **Tags & Search**: Comma-separated tag strings parsed on upload. Navbar-based queries filtering by titles, tag lists, or album names.
 5. **Optimistic Favorites**: Toggle heart icons on images with instant optimistic UI changes that automatically roll back on network failure.
-6. **Drag-and-Drop Concurrent Uploads**: Upload multiple files simultaneously with individual parallel progress indicators.
+6. **Drag-and-Drop Concurrent Uploads**: Upload multiple files simultaneously with individual parallel progress indicators and thumbnail previews.
 7. **Direct Cloud Downloads**: Download full-resolution original assets with one click via temporary anchor triggers.
 8. **Cloudinary CDN Transformations**: Grid cards load optimized thumbnails (`w_400,q_auto,f_auto`) for fast load times, saving network bandwidth.
 
@@ -58,7 +59,7 @@ A containerized MERN application providing an interactive cloud photo gallery da
 13. **Real-Time Updates**: Live-updating album views when a collaborator uploads, deletes, or comments — powered by Socket.IO scoped rooms.
 
 ### Content Management
-14. **Soft-Delete & Trash**: Deleted images and albums move to a 30-day trash bin instead of being permanently removed. Restore or permanently delete from the trash view.
+14. **Soft-Delete & Trash**: Deleted images and albums move to a 30-day trash bin instead of being permanently removed. Restore, empty trash at once, or permanently delete from the trash view.
 15. **Duplicate Detection**: SHA-256 content hashing prevents re-uploading identical files per user. Exact match returns the existing image.
 16. **Extended Search & Sort**: Filter by tag, album, date range, and format. Sort by newest, oldest, title, or size.
 
@@ -79,8 +80,8 @@ A containerized MERN application providing an interactive cloud photo gallery da
 photo-gallery/
 ├── backend/
 │   ├── config/           # DB connection, Cloudinary, logger, Swagger setup
-│   ├── controllers/      # Route handlers (auth, image, album, share, comment, analytics)
-│   ├── middleware/        # Auth, album access, error handler, multer upload
+│   ├── controllers/      # Route handlers (auth, image, album, share, comment, analytics, settings)
+│   ├── middleware/        # Auth, album access, error handler, validator
 │   ├── models/           # Mongoose schemas (User, Image, Album, Session, ShareLink, Comment, Activity)
 │   ├── routes/           # Express route definitions with Swagger JSDoc annotations
 │   ├── jobs/             # Scheduled background jobs (trash cleanup)
@@ -88,12 +89,13 @@ photo-gallery/
 │   ├── tests/            # Jest integration tests
 │   ├── server.js         # Main Express + Socket.IO server entry point
 │   └── server-test.js    # In-memory MongoDB test server for E2E
+│   └── .env.example      # Backend environment configurations template
 ├── frontend/
 │   ├── src/
 │   │   ├── api/          # Axios API client with interceptors
-│   │   ├── components/   # React components (Gallery, Upload, Lightbox, Albums, Comments, etc.)
-│   │   ├── context/      # AuthContext with token refresh logic
-│   │   └── hooks/        # Custom hooks (useGallery)
+│   │   ├── components/   # React components (Gallery, Upload, Lightbox, Albums, Comments, Favorites, Shared, Settings)
+│   │   ├── context/      # AuthContext and ToastContext providers
+│   │   └── hooks/        # Custom hooks (useGallery, useToast)
 │   └── public/
 ├── e2e/                  # Playwright end-to-end browser tests
 ├── .github/workflows/    # CI pipeline definitions
@@ -112,7 +114,7 @@ Create a `.env` file inside the `backend/` folder:
 
 ```env
 PORT=5000
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/photo-gallery
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/pixhive
 JWT_SECRET=yoursecretrandomstringhere
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
@@ -147,7 +149,7 @@ Ensure Docker and Docker Compose are installed on your machine.
 Create a `.env` file in the **project root** directory:
 
 ```env
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/photo-gallery
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/pixhive
 JWT_SECRET=yoursecretrandomstringhere
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
@@ -225,13 +227,18 @@ npx playwright test
 | POST | `/api/auth/logout` | Yes | Revoke current session |
 | GET | `/api/auth/sessions` | Yes | List active sessions |
 | DELETE | `/api/auth/sessions/:id` | Yes | Revoke a specific session |
-| GET | `/api/images` | Yes | Get all images (with search/filter/sort) |
+| GET | `/api/auth/profile` | Yes | Get logged-in user profile details |
+| PATCH | `/api/auth/profile` | Yes | Update user name/email settings |
+| POST | `/api/auth/change-password` | Yes | Change user password |
+| DELETE | `/api/auth/account` | Yes | Permanently delete user account and cascade clean |
+| GET | `/api/images` | Yes | Get images (supports favorites, search, filter, sort) |
 | POST | `/api/images` | Yes | Upload an image |
 | DELETE | `/api/images/:id` | Yes | Soft-delete an image (move to trash) |
 | POST | `/api/images/:id/restore` | Yes | Restore an image from trash |
 | DELETE | `/api/images/:id/permanent` | Yes | Permanently delete an image |
 | POST | `/api/images/:id/favorite` | Yes | Toggle favorite status |
-| GET | `/api/images/trash` | Yes | Get trashed images |
+| GET | `/api/trash` | Yes | Get soft-deleted images and albums |
+| DELETE | `/api/trash` | Yes | Empty all items from the trash permanently |
 | GET | `/api/albums` | Yes | Get all user albums + collaborated albums |
 | POST | `/api/albums` | Yes | Create an album |
 | DELETE | `/api/albums/:id` | Yes | Soft-delete an album |
@@ -242,9 +249,10 @@ npx playwright test
 | DELETE | `/api/albums/:id/collaborators/:userId` | Yes | Remove a collaborator |
 | PATCH | `/api/albums/:id/collaborators/:userId` | Yes | Update collaborator role |
 | GET | `/api/albums/:id/activity` | Yes | Get album activity feed |
-| POST | `/api/share` | Yes | Create a share link |
+| POST | `/api/share` | Yes | Create a public share link |
+| GET | `/api/share` | Yes | List all share links created by the user |
 | GET | `/api/share/:token` | No | Access shared resource |
-| DELETE | `/api/share/:id` | Yes | Revoke a share link |
+| DELETE | `/api/share/:token` | Yes | Revoke a share link |
 | GET | `/api/images/:imageId/comments` | Yes | Get comments on an image |
 | POST | `/api/images/:imageId/comments` | Yes | Add a comment |
 | DELETE | `/api/comments/:id` | Yes | Delete a comment |
